@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  coach
+  athlete
+}
+
+enum SessionType {
+  Mobility
+  LPO
+  Strength
+  Gymnastics
+  Metcon
+  Endurance
+  Core
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(athlete)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  student      Student?  @relation("UserStudent")
+  coachStudents Student[] @relation("CoachStudents")
+  coachPlans   TrainingPlan[] @relation("CoachPlans")
+  workoutLogs  WorkoutLog[]
+
+  @@map("users")
+}
+
+model Student {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  coachId           String
+  goal              String?
+  currentMonth      Int      @default(1)
+  currentWeek       Int      @default(1)
+  completionPercent Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user          User           @relation("UserStudent", fields: [userId], references: [id], onDelete: Cascade)
+  coach         User           @relation("CoachStudents", fields: [coachId], references: [id])
+  trainingPlans TrainingPlan[]
+
+  @@map("students")
+}
+
+model TrainingPlan {
+  id        String   @id @default(uuid())
+  studentId String
+  coachId   String
+  month     Int
+  title     String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  coach   User    @relation("CoachPlans", fields: [coachId], references: [id])
+  weeks   Week[]
+
+  @@map("training_plans")
+}
+
+model Week {
+  id         String   @id @default(uuid())
+  planId     String
+  weekNumber Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  plan TrainingPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  days TrainingDay[]
+
+  @@map("weeks")
+}
+
+model TrainingDay {
+  id        String   @id @default(uuid())
+  weekId    String
+  dayOfWeek String
+  dayIndex  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  week     Week      @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@map("training_days")
+}
+
+model Session {
+  id        String      @id @default(uuid())
+  dayId     String
+  name      String
+  type      SessionType
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  day       TrainingDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercises Exercise[]
+
+  @@map("sessions")
+}
+
+model Exercise {
+  id          String   @id @default(uuid())
+  sessionId   String
+  name        String
+  youtubeUrl  String?
+  sets        Int?
+  reps        String?
+  duration    String?
+  restSeconds Int?
+  loadPercent Float?
+  coachNotes  String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutLogs WorkoutLog[]
+
+  @@map("exercises")
+}
+
+model WorkoutLog {
+  id             String   @id @default(uuid())
+  exerciseId     String
+  athleteId      String
+  completedAt    DateTime @default(now())
+  setsCompleted  Int
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  athlete  User     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@map("workout_logs")
+}

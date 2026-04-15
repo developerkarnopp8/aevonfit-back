@@ -1,25 +1,24 @@
-import { IsString, IsOptional, IsNumber, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsEmail, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateStudentDto {
-  @ApiProperty({ description: 'ID do User já criado para este atleta' })
-  @IsUUID()
-  userId: string;
+  @ApiProperty({ example: 'Gustavo Karnopp' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'gustavo@email.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ description: 'Senha de acesso do atleta', minLength: 6 })
+  @IsString()
+  @MinLength(6)
+  password: string;
 
   @ApiPropertyOptional({ example: 'Competição CrossFit' })
   @IsString()
   @IsOptional()
   goal?: string;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsNumber()
-  @IsOptional()
-  currentMonth?: number;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsNumber()
-  @IsOptional()
-  currentWeek?: number;
 }
 
 export class UpdateStudentDto {

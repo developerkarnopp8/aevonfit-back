@@ -49,6 +49,12 @@ export class TrainingPlansController {
     return this.service.publish(id);
   }
 
+  @Post(':id/initialize')
+  @ApiOperation({ summary: 'Inicializa 4 semanas × 6 dias se o plano não tiver semanas' })
+  initializeWeeks(@Param('id') id: string) {
+    return this.service.initializeWeeks(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Remove o plano' })
   remove(@Param('id') id: string) {

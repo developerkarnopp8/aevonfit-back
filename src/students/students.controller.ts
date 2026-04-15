@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Request, UseGuards, Query,
+  Controller, Get, Post, Patch, Delete, Body, Param, Request, UseGuards, Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
@@ -48,5 +48,11 @@ export class StudentsController {
   @ApiOperation({ summary: 'Atualiza dados do aluno' })
   update(@Param('id') id: string, @Body() dto: UpdateStudentDto) {
     return this.studentsService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remove aluno e conta de usuário' })
+  remove(@Param('id') id: string) {
+    return this.studentsService.remove(id);
   }
 }

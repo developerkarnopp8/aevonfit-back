@@ -15,6 +15,12 @@ enum Role {
   athlete
 }
 
+enum PaymentStatus {
+  pending
+  paid
+  overdue
+}
+
 enum SessionType {
   Mobility
   LPO
@@ -37,8 +43,10 @@ model User {
   // Relations
   student      Student?  @relation("UserStudent")
   coachStudents Student[] @relation("CoachStudents")
-  coachPlans   TrainingPlan[] @relation("CoachPlans")
-  workoutLogs  WorkoutLog[]
+  coachPlans    TrainingPlan[]    @relation("CoachPlans")
+  workoutLogs   WorkoutLog[]
+  exerciseLibrary ExerciseLibrary[] @relation("CoachLibrary")
+  coachPayments Payment[]         @relation("CoachPayments")
 
   @@map("users")
 }
@@ -58,6 +66,7 @@ model Student {
   user          User           @relation("UserStudent", fields: [userId], references: [id], onDelete: Cascade)
   coach         User           @relation("CoachStudents", fields: [coachId], references: [id])
   trainingPlans TrainingPlan[]
+  payments      Payment[]
 
   @@map("students")
 }
@@ -145,6 +154,44 @@ model Exercise {
   workoutLogs WorkoutLog[]
 
   @@map("exercises")
+}
+
+model ExerciseLibrary {
+  id          String   @id @default(uuid())
+  coachId     String
+  name        String
+  youtubeUrl  String?
+  sets        Int?
+  reps        String?
+  duration    String?
+  restSeconds Int?
+  loadPercent Float?
+  category    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  coach User @relation("CoachLibrary", fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_library")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  studentId   String
+  coachId     String
+  amount      Float
+  description String?
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      PaymentStatus @default(pending)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  coach   User    @relation("CoachPayments", fields: [coachId], references: [id])
+
+  @@map("payments")
 }
 
 model WorkoutLog {

@@ -35,7 +35,7 @@ export class TrainingPlansService {
     return this.prisma.trainingPlan.findMany({
       where: { studentId },
       include: fullPlanInclude,
-      orderBy: { month: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -49,9 +49,34 @@ export class TrainingPlansService {
   }
 
   async create(coachId: string, dto: CreatePlanDto) {
-    return this.prisma.trainingPlan.create({
-      data: { ...dto, coachId },
-      include: fullPlanInclude,
+    const WEEKS = 4;
+    const DAYS = [
+      { dayOfWeek: 'Segunda', dayIndex: 1 },
+      { dayOfWeek: 'Terça',   dayIndex: 2 },
+      { dayOfWeek: 'Quarta',  dayIndex: 3 },
+      { dayOfWeek: 'Quinta',  dayIndex: 4 },
+      { dayOfWeek: 'Sexta',   dayIndex: 5 },
+      { dayOfWeek: 'Sábado',  dayIndex: 6 },
+    ];
+
+    return this.prisma.$transaction(async tx => {
+      const plan = await tx.trainingPlan.create({
+        data: { ...dto, coachId },
+      });
+
+      for (let w = 1; w <= WEEKS; w++) {
+        const week = await tx.week.create({
+          data: { planId: plan.id, weekNumber: w },
+        });
+        await tx.trainingDay.createMany({
+          data: DAYS.map(d => ({ weekId: week.id, ...d })),
+        });
+      }
+
+      return tx.trainingPlan.findUnique({
+        where: { id: plan.id },
+        include: fullPlanInclude,
+      });
     });
   }
 
@@ -74,6 +99,30 @@ export class TrainingPlansService {
   }
 
   // ── Weeks ────────────────────────────────────────────────────────────────
+
+  /** Garante que o plano tenha 4 semanas × 6 dias. Idempotente. */
+  async initializeWeeks(planId: string) {
+    const plan = await this.findById(planId);
+    if (plan.weeks.length > 0) return plan; // já inicializado
+
+    const DAYS = [
+      { dayOfWeek: 'Segunda', dayIndex: 1 },
+      { dayOfWeek: 'Terça',   dayIndex: 2 },
+      { dayOfWeek: 'Quarta',  dayIndex: 3 },
+      { dayOfWeek: 'Quinta',  dayIndex: 4 },
+      { dayOfWeek: 'Sexta',   dayIndex: 5 },
+      { dayOfWeek: 'Sábado',  dayIndex: 6 },
+    ];
+
+    await this.prisma.$transaction(async tx => {
+      for (let w = 1; w <= 4; w++) {
+        const week = await tx.week.create({ data: { planId, weekNumber: w } });
+        await tx.trainingDay.createMany({ data: DAYS.map(d => ({ weekId: week.id, ...d })) });
+      }
+    });
+
+    return this.findById(planId);
+  }
 
   async addWeek(planId: string, dto: CreateWeekDto) {
     await this.findById(planId);

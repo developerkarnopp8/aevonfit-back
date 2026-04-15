@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto, UpdateStudentDto } from './dto/create-student.dto';
 
@@ -44,17 +45,19 @@ export class StudentsService {
   }
 
   async create(coachId: string, dto: CreateStudentDto) {
-    return this.prisma.student.create({
-      data: {
-        userId: dto.userId,
-        coachId,
-        goal: dto.goal,
-        currentMonth: dto.currentMonth ?? 1,
-        currentWeek: dto.currentWeek ?? 1,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      },
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) throw new ConflictException('E-mail já cadastrado');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    return this.prisma.$transaction(async tx => {
+      const user = await tx.user.create({
+        data: { name: dto.name, email: dto.email, passwordHash, role: 'athlete' },
+      });
+      return tx.student.create({
+        data: { userId: user.id, coachId, goal: dto.goal },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
     });
   }
 
@@ -66,10 +69,16 @@ export class StudentsService {
     });
   }
 
+  async remove(id: string) {
+    const student = await this.findOne(id);
+    // Deleting the User cascades to Student (onDelete: Cascade in schema)
+    return this.prisma.user.delete({ where: { id: student.userId } });
+  }
+
   async getCurrentPlan(studentId: string) {
     const student = await this.findOne(studentId);
     const plan = await this.prisma.trainingPlan.findFirst({
-      where: { studentId, published: true },
+      where: { studentId },
       orderBy: { month: 'desc' },
       include: {
         weeks: {

@@ -7,6 +7,8 @@ import { StudentsModule } from './students/students.module';
 import { TrainingPlansModule } from './training-plans/training-plans.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { WorkoutLogsModule } from './workout-logs/workout-logs.module';
+import { ExerciseLibraryModule } from './exercise-library/exercise-library.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { WorkoutLogsModule } from './workout-logs/workout-logs.module';
     TrainingPlansModule,
     SessionsModule,
     WorkoutLogsModule,
+    ExerciseLibraryModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

@@ -12,7 +12,10 @@ export class UsersService {
   }
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
     return user;
   }

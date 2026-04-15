@@ -13,6 +13,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
+  @Get('me')
+  @ApiOperation({ summary: 'Retorna o perfil de aluno do usuário autenticado (atleta)' })
+  getMyProfile(@Request() req: any) {
+    return this.studentsService.findByUserId(req.user.id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Lista alunos (coach vê seus alunos)' })
   @ApiQuery({ name: 'coachId', required: false })

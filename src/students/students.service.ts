@@ -6,6 +6,17 @@ import { CreateStudentDto, UpdateStudentDto } from './dto/create-student.dto';
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
+  async findByUserId(userId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { userId },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
+    if (!student) throw new NotFoundException('Perfil de aluno não encontrado para este usuário');
+    return student;
+  }
+
   async findAll(coachId?: string) {
     return this.prisma.student.findMany({
       where: coachId ? { coachId } : undefined,

@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aevonfit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aevonfit2024}
+      POSTGRES_DB: aevonfit
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: aevonfit-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-aevonfit2024}@db:5432/aevonfit
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      JWT_EXPIRES_IN: 7d
+      PORT: 3000
+    ports:
+      - '3000:3000'
+
+volumes:
+  postgres_data:

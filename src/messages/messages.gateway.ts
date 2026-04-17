@@ -15,6 +15,7 @@ import { JwtService } from '@nestjs/jwt';
     origin: [
       'http://localhost:4200',
       'http://aevonfit.aevon.online',
+      'http://aevonfit.aevon.online:80',
       'http://aevonfit.bfit.aevon.online',
     ],
   },

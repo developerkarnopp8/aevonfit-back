@@ -11,7 +11,13 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: [
+      'http://localhost:4200',
+      'http://aevonfit.aevon.online',
+      'http://aevonfit.bfit.aevon.online',
+    ],
+  },
   namespace: '/messages',
 })
 export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {

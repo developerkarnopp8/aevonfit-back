@@ -93,10 +93,11 @@ Variáveis obrigatórias:
 |--------|----------------------|
 | auth | POST /auth/login |
 | users | POST /users, GET /users/me |
-| students | GET /students, GET /students/:id, GET /students/:id/plan, POST /students, PATCH /students/:id |
-| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, POST /training-plans, PATCH /training-plans/:id/publish, + weeks/days/sessions/exercises CRUD |
+| students | GET /students, GET /students/me, GET /students/:id, GET /students/:id/plan, POST /students, PATCH /students/:id, DELETE /students/:id |
+| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, POST /training-plans, PATCH /training-plans/:id/publish, POST /training-plans/:id/initialize, + weeks/days/sessions/exercises CRUD |
 | sessions | GET /sessions/:id (inclui exercícios + último log do atleta) |
 | workout-logs | POST /workout-logs, GET /workout-logs/history, GET /workout-logs/session/:id, GET /workout-logs/exercise/:id |
+| messages | GET /messages/inbox, GET /messages/unread, GET /messages/:otherId, POST /messages — WebSocket namespace `/messages` para real-time |
 
 ## Modelo de Dados
 
@@ -113,8 +114,9 @@ User (coach|athlete)
 
 ## Decisões Arquiteturais
 
-- **JWT via Passport**: `LocalStrategy` valida email/senha; `JwtStrategy` valida Bearer token — payload: `{ id, email, role, name }`
+- **JWT via Passport**: `LocalStrategy` valida email/senha; `JwtStrategy` valida Bearer token — payload: `{ sub: userId, email, role, name }`
 - **`req.user.id`**: controllers usam `req.user.id` (não `.sub`) — o JwtStrategy faz o mapeamento de `payload.sub → id`
+- **WebSocket (MessagesGateway)**: usa `payload.sub` diretamente (não `payload.id`) para identificar o usuário conectado
 - **PrismaModule global**: `isGlobal: true` — qualquer módulo pode injetar `PrismaService` sem reimportar
 - **Cascade deletes**: todas as relações têm `onDelete: Cascade` — deletar plano remove tudo abaixo
 - **Estrutura flat de módulos**: todos em `src/<modulo>/` diretamente, sem pasta `modules/`
@@ -132,4 +134,4 @@ User (coach|athlete)
 
 ---
 
-_Última atualização: 2026-04-14 — Bootstrap completo: auth, users, students, training-plans, sessions, workout-logs, Prisma schema, seed_
+_Última atualização: 2026-04-17 — Adicionado módulo de mensagens: REST + WebSocket real-time, notificações do browser_

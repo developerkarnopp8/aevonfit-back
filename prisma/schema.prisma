@@ -41,12 +41,14 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   // Relations
-  student      Student?  @relation("UserStudent")
-  coachStudents Student[] @relation("CoachStudents")
-  coachPlans    TrainingPlan[]    @relation("CoachPlans")
-  workoutLogs   WorkoutLog[]
+  student         Student?          @relation("UserStudent")
+  coachStudents   Student[]         @relation("CoachStudents")
+  coachPlans      TrainingPlan[]    @relation("CoachPlans")
+  workoutLogs     WorkoutLog[]
   exerciseLibrary ExerciseLibrary[] @relation("CoachLibrary")
-  coachPayments Payment[]         @relation("CoachPayments")
+  coachPayments   Payment[]         @relation("CoachPayments")
+  sentMessages    Message[]         @relation("SentMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
 
   @@map("users")
 }
@@ -192,6 +194,20 @@ model Payment {
   coach   User    @relation("CoachPayments", fields: [coachId], references: [id])
 
   @@map("payments")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  fromId     String
+  toId       String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  from User @relation("SentMessages",     fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: Cascade)
+
+  @@map("messages")
 }
 
 model WorkoutLog {

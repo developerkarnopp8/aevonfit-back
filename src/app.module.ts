@@ -9,6 +9,7 @@ import { SessionsModule } from './sessions/sessions.module';
 import { WorkoutLogsModule } from './workout-logs/workout-logs.module';
 import { ExerciseLibraryModule } from './exercise-library/exercise-library.module';
 import { PaymentsModule } from './payments/payments.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PaymentsModule } from './payments/payments.module';
     WorkoutLogsModule,
     ExerciseLibraryModule,
     PaymentsModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

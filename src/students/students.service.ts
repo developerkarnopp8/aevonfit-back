@@ -1,11 +1,24 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable, NotFoundException, ConflictException, ForbiddenException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto, UpdateStudentDto } from './dto/create-student.dto';
 
+type AuthUser = { id: string; role: string };
+
 @Injectable()
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
+
+  /** Coach dono do aluno, ou o próprio aluno — ninguém mais. */
+  private assertCanAccess(student: { coachId: string; userId: string }, user: AuthUser) {
+    const isOwningCoach = user.role === 'coach' && student.coachId === user.id;
+    const isSelf = user.role === 'athlete' && student.userId === user.id;
+    if (!isOwningCoach && !isSelf) {
+      throw new ForbiddenException('Você não tem acesso a este aluno.');
+    }
+  }
 
   async findByUserId(userId: string) {
     const student = await this.prisma.student.findFirst({
@@ -18,9 +31,9 @@ export class StudentsService {
     return student;
   }
 
-  async findAll(coachId?: string) {
+  async findAll(coachId: string) {
     return this.prisma.student.findMany({
-      where: coachId ? { coachId } : undefined,
+      where: { coachId },
       include: {
         user: { select: { id: true, name: true, email: true, role: true } },
       },
@@ -28,7 +41,7 @@ export class StudentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: AuthUser) {
     const student = await this.prisma.student.findUnique({
       where: { id },
       include: {
@@ -41,6 +54,7 @@ export class StudentsService {
       },
     });
     if (!student) throw new NotFoundException('Aluno não encontrado');
+    this.assertCanAccess(student, user);
     return student;
   }
 
@@ -61,22 +75,32 @@ export class StudentsService {
     });
   }
 
-  async update(id: string, dto: UpdateStudentDto) {
-    await this.findOne(id);
+  /** Busca simples pro coach dono validar antes de escrever — sem cross-check de role. */
+  private async getOwnedByCoach(id: string, coachId: string) {
+    const student = await this.prisma.student.findUnique({ where: { id } });
+    if (!student) throw new NotFoundException('Aluno não encontrado');
+    if (student.coachId !== coachId) {
+      throw new ForbiddenException('Você não tem acesso a este aluno.');
+    }
+    return student;
+  }
+
+  async update(id: string, coachId: string, dto: UpdateStudentDto) {
+    await this.getOwnedByCoach(id, coachId);
     return this.prisma.student.update({
       where: { id },
       data: dto,
     });
   }
 
-  async remove(id: string) {
-    const student = await this.findOne(id);
+  async remove(id: string, coachId: string) {
+    const student = await this.getOwnedByCoach(id, coachId);
     // Deleting the User cascades to Student (onDelete: Cascade in schema)
     return this.prisma.user.delete({ where: { id: student.userId } });
   }
 
-  async getCurrentPlan(studentId: string) {
-    const student = await this.findOne(studentId);
+  async getCurrentPlan(studentId: string, user: AuthUser) {
+    const student = await this.findOne(studentId, user);
     const plan = await this.prisma.trainingPlan.findFirst({
       where: { studentId },
       orderBy: { month: 'desc' },

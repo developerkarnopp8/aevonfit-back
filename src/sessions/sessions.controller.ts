@@ -13,6 +13,6 @@ export class SessionsController {
   @Get(':id')
   @ApiOperation({ summary: 'Retorna sessão com exercícios e logs do atleta autenticado' })
   findById(@Param('id') id: string, @Request() req: any) {
-    return this.sessionsService.findById(id, req.user.id);
+    return this.sessionsService.findById(id, req.user);
   }
 }

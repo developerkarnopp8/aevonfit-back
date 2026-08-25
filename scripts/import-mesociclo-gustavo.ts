@@ -46,13 +46,13 @@ const semana1: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Complexo de Aquecimento', sets: 2, reps: '5 Clean Deadlift + 5 Hang Muscle Clean + 5 Front Squat + 5 Push Press + 5 Split Jerk', coachNotes: 'Bella Complex (Segredo) + Força — objetivo: construção de força específica para a prova de PR. 2 rounds.' },
+          { name: 'Complexo de Aquecimento', sets: 2, coachNotes: 'Movimentos: 5 Clean Deadlift + 5 Hang Muscle Clean + 5 Front Squat + 5 Push Press + 5 Split Jerk. Bella Complex (Segredo) + Força — objetivo: construção de força específica para a prova de PR. 2 rounds.' },
         ],
       },
       {
         name: 'Bella Complex — Técnica', type: 'LPO',
         exercises: [
-          { name: 'Bella Complex', sets: 6, reps: '1 Clean + 1 Shoulder-to-Overhead + 1 Front Squat + 1 Shoulder-to-Overhead', restSeconds: 90, coachNotes: 'Sem soltar a barra. Every 1\'30" x6 — 60%, 65%, 70%, 75%, 78%, 80% do Clean & Jerk.' },
+          { name: 'Bella Complex', sets: 6, restSeconds: 90, coachNotes: 'Movimentos: 1 Clean + 1 Shoulder-to-Overhead + 1 Front Squat + 1 Shoulder-to-Overhead — sem soltar a barra. Every 1\'30" x6 — 60%, 65%, 70%, 75%, 78%, 80% do Clean & Jerk.' },
         ],
       },
       {
@@ -78,7 +78,7 @@ const semana1: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Circuito de Aquecimento', sets: 3, reps: '8 Push-Up + 8 Scap Pull-Up + 8 Power Snatch + 10 Air Squat + 20" Handstand Hold', coachNotes: '3 rounds' },
+          { name: 'Circuito de Aquecimento', sets: 3, coachNotes: 'Movimentos: 8 Push-Up + 8 Scap Pull-Up + 8 Power Snatch + 10 Air Squat + 20" Handstand Hold. 3 rounds.' },
         ],
       },
       {
@@ -110,7 +110,7 @@ const semana1: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Circuito de Aquecimento', sets: 3, reps: '15 Ring Row + 12 Kipping Swing + 100m Running' },
+          { name: 'Circuito de Aquecimento', sets: 3, coachNotes: 'Movimentos: 15 Ring Row + 12 Kipping Swing + 100m Running. 3 rounds.' },
         ],
       },
       {
@@ -144,13 +144,13 @@ const semana1: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Complexo de Aquecimento', sets: 2, reps: '5 Snatch Deadlift + 5 High Pull + 5 Muscle Snatch' },
+          { name: 'Complexo de Aquecimento', sets: 2, coachNotes: 'Movimentos: 5 Snatch Deadlift + 5 High Pull + 5 Muscle Snatch.' },
         ],
       },
       {
         name: 'Power Snatch', type: 'LPO',
         exercises: [
-          { name: 'Power Snatch Complex', sets: 7, reps: '1 Hang Power Snatch + 1 Squat Snatch', restSeconds: 75, coachNotes: 'Every 1\'15" x7 — 65%, 70%, 75%, 78%, 80%, 82%, 85%' },
+          { name: 'Power Snatch Complex', sets: 7, restSeconds: 75, coachNotes: 'Movimentos: 1 Hang Power Snatch + 1 Squat Snatch. Every 1\'15" x7 — 65%, 70%, 75%, 78%, 80%, 82%, 85%' },
         ],
       },
       {
@@ -212,7 +212,7 @@ const semana2: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Complexo de Aquecimento', sets: 2, reps: '5 Clean Deadlift + 5 Hang Muscle Clean + 5 Front Squat + 5 Push Press + 5 Split Jerk', coachNotes: 'Bella Complex + Força — objetivo: subir a intensidade do complexo sem buscar PR e identificar o limitante.' },
+          { name: 'Complexo de Aquecimento', sets: 2, coachNotes: 'Movimentos: 5 Clean Deadlift + 5 Hang Muscle Clean + 5 Front Squat + 5 Push Press + 5 Split Jerk. Bella Complex + Força — objetivo: subir a intensidade do complexo sem buscar PR e identificar o limitante.' },
         ],
       },
       {
@@ -244,7 +244,7 @@ const semana2: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Circuito de Aquecimento', sets: 3, reps: '8 Push-Up + 8 Scap Pull-Up + 6 Power Snatch com Barra + 8 Air Squat + 20" Handstand Hold' },
+          { name: 'Circuito de Aquecimento', sets: 3, coachNotes: 'Movimentos: 8 Push-Up + 8 Scap Pull-Up + 6 Power Snatch com Barra + 8 Air Squat + 20" Handstand Hold. 3 rounds.' },
         ],
       },
       {
@@ -282,7 +282,7 @@ const semana2: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Circuito de Aquecimento', sets: 3, reps: '8 Goblet Squat + 8 Romanian Deadlift Leve + 10 Alternated Reverse Lunge + 200m Bike Leve', coachNotes: 'Lower Body + Recovery — objetivo: continuar construindo força sem aumentar fadiga de ombro.' },
+          { name: 'Circuito de Aquecimento', sets: 3, coachNotes: 'Movimentos: 8 Goblet Squat + 8 Romanian Deadlift Leve + 10 Alternated Reverse Lunge + 200m Bike Leve. Lower Body + Recovery — objetivo: continuar construindo força sem aumentar fadiga de ombro.' },
         ],
       },
       {
@@ -318,7 +318,7 @@ const semana2: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Complexo de Aquecimento', sets: 2, reps: '5 Snatch Deadlift + 5 Snatch High Pull + 5 Muscle Snatch + 5 Overhead Squat' },
+          { name: 'Complexo de Aquecimento', sets: 2, coachNotes: 'Movimentos: 5 Snatch Deadlift + 5 Snatch High Pull + 5 Muscle Snatch + 5 Overhead Squat.' },
         ],
       },
       {
@@ -357,7 +357,7 @@ const semana2: DayInput[] = [
       {
         name: 'Aquecimento', type: 'Mobility',
         exercises: [
-          { name: 'Complexo de Aquecimento', sets: 2, reps: '4 Muscle Clean + 4 Front Squat + 4 Push Press + 4 Split Jerk', coachNotes: 'Bella Complex + Competition Pacing — objetivo: segunda exposição semanal ao Bella e capacidade competitiva sem repetir a Prova 1. Progredir até 65%.' },
+          { name: 'Complexo de Aquecimento', sets: 2, coachNotes: 'Movimentos: 4 Muscle Clean + 4 Front Squat + 4 Push Press + 4 Split Jerk. Bella Complex + Competition Pacing — objetivo: segunda exposição semanal ao Bella e capacidade competitiva sem repetir a Prova 1. Progredir até 65%.' },
         ],
       },
       {

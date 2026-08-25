@@ -60,9 +60,9 @@ export class MessagesService {
     return this.prisma.message.count({ where: { toId: userId, read: false } });
   }
 
-  async send(fromId: string, toId: string, content: string) {
+  async send(fromId: string, toId: string, content: string, isSystem = false) {
     const message = await this.prisma.message.create({
-      data: { fromId, toId, content },
+      data: { fromId, toId, content, isSystem },
       include: {
         from: { select: userSelect },
         to:   { select: userSelect },

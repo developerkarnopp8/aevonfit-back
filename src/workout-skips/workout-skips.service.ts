@@ -68,4 +68,30 @@ export class WorkoutSkipsService {
     if (!session) throw new NotFoundException('Sessão não encontrada');
     return { name: session.name, studentId: session.day.week.plan.studentId };
   }
+
+  async getPendingCountByStudent(coachId: string) {
+    const skips = await this.prisma.workoutSkip.findMany({
+      where: {
+        decision: 'Postponed',
+        OR: [
+          { exercise: { workoutLogs: { none: {} }, session: { day: { week: { plan: { coachId } } } } } },
+          { session: { day: { week: { plan: { coachId } } } } },
+        ],
+      },
+      include: {
+        exercise: { include: { session: { include: { day: { include: { week: { include: { plan: true } } } } } } } },
+        session:  { include: { day: { include: { week: { include: { plan: true } } } } } },
+      },
+    });
+
+    const counts = new Map<string, number>();
+    for (const skip of skips) {
+      const studentId = skip.exercise?.session.day.week.plan.studentId
+        ?? skip.session?.day.week.plan.studentId;
+      if (!studentId) continue;
+      counts.set(studentId, (counts.get(studentId) ?? 0) + 1);
+    }
+
+    return Array.from(counts, ([studentId, count]) => ({ studentId, count }));
+  }
 }

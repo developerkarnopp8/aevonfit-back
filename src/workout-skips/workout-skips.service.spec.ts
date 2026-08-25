@@ -96,3 +96,38 @@ describe('WorkoutSkipsService.create', () => {
     expect(messagesService.send).not.toHaveBeenCalled();
   });
 });
+
+describe('WorkoutSkipsService.getPendingCountByStudent', () => {
+  let service: WorkoutSkipsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = {
+      workoutSkip: { findMany: jest.fn() },
+    };
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkoutSkipsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: { findOne: jest.fn() } },
+        { provide: MessagesService, useValue: { send: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(WorkoutSkipsService);
+  });
+
+  it('agrupa a contagem de skips pendentes por aluno do coach', async () => {
+    prisma.workoutSkip.findMany.mockResolvedValue([
+      { id: '1', exercise: { session: { day: { week: { plan: { studentId: 'student-1' } } } } }, exerciseId: 'ex-1', sessionId: null, session: null, workoutLogAfter: null },
+      { id: '2', exercise: { session: { day: { week: { plan: { studentId: 'student-1' } } } } }, exerciseId: 'ex-2', sessionId: null, session: null, workoutLogAfter: null },
+      { id: '3', exercise: null, session: { day: { week: { plan: { studentId: 'student-2' } } } }, exerciseId: null, sessionId: 's-1', workoutLogAfter: null },
+    ]);
+
+    const result = await service.getPendingCountByStudent('coach-1');
+
+    expect(result).toEqual([
+      { studentId: 'student-1', count: 2 },
+      { studentId: 'student-2', count: 1 },
+    ]);
+  });
+});

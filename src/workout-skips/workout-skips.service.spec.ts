@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { WorkoutSkipsService } from './workout-skips.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
@@ -79,5 +79,20 @@ describe('WorkoutSkipsService.create', () => {
     await expect(
       service.create({ exerciseId: 'ex-1', reason: 'NoTime', decision: 'Postponed' } as any, athlete),
     ).rejects.toThrow(ForbiddenException);
+
+    expect(prisma.workoutSkip.create).not.toHaveBeenCalled();
+    expect(messagesService.send).not.toHaveBeenCalled();
+  });
+
+  it('lanca NotFoundException quando o exercicio nao existe', async () => {
+    prisma.exercise.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create({ exerciseId: 'ex-inexistente', reason: 'NoTime', decision: 'Postponed' } as any, athlete),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(studentsService.findOne).not.toHaveBeenCalled();
+    expect(prisma.workoutSkip.create).not.toHaveBeenCalled();
+    expect(messagesService.send).not.toHaveBeenCalled();
   });
 });

@@ -129,5 +129,36 @@ describe('WorkoutSkipsService.getPendingCountByStudent', () => {
       { studentId: 'student-1', count: 2 },
       { studentId: 'student-2', count: 1 },
     ]);
+
+    expect(prisma.workoutSkip.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          decision: 'Postponed',
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              exercise: expect.objectContaining({
+                workoutLogs: { none: {} },
+                session: expect.objectContaining({
+                  day: expect.objectContaining({
+                    week: expect.objectContaining({
+                      plan: { coachId: 'coach-1' },
+                    }),
+                  }),
+                }),
+              }),
+            }),
+            expect.objectContaining({
+              session: expect.objectContaining({
+                day: expect.objectContaining({
+                  week: expect.objectContaining({
+                    plan: { coachId: 'coach-1' },
+                  }),
+                }),
+              }),
+            }),
+          ]),
+        }),
+      }),
+    );
   });
 });

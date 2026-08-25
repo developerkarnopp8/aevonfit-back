@@ -18,7 +18,14 @@ const fullPlanInclude = {
           sessions: {
             orderBy: { order: 'asc' as const },
             include: {
-              exercises: { orderBy: { order: 'asc' as const } },
+              workoutSkips: { orderBy: { createdAt: 'desc' as const }, take: 1 },
+              exercises: {
+                orderBy: { order: 'asc' as const },
+                include: {
+                  workoutLogs: { select: { id: true } },
+                  workoutSkips: { orderBy: { createdAt: 'desc' as const }, take: 1 },
+                },
+              },
             },
           },
         },

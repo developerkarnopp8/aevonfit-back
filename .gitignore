@@ -21,3 +21,4 @@ npm-debug.log*
 
 # Prisma
 prisma/migrations/dev.db
+.worktrees/

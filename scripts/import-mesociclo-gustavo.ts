@@ -417,6 +417,7 @@ async function main() {
       studentId: student.id,
       coachId: coach.id,
       month: 2,
+      startDate: new Date('2026-08-17T00:00:00Z'), // Segunda da Semana 1 (ver semana1[0].date acima)
       title: 'Mesociclo 6',
       published: true,
     },

@@ -199,3 +199,58 @@ describe('TrainingPlansService.getWeeklyCompletionByDayIndex', () => {
     expect(result).toEqual([0, 1, 2, 3, 4, 5, 6].map(dayIndex => ({ dayIndex, percent: 0 })));
   });
 });
+
+describe('TrainingPlansService.create — normalização de startDate', () => {
+  let service: TrainingPlansService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    const txPlan = { id: 'plan-1' };
+    const tx = {
+      trainingPlan: {
+        create: jest.fn().mockResolvedValue(txPlan),
+        findUnique: jest.fn().mockResolvedValue({ id: 'plan-1', weeks: [] }),
+      },
+      week: { create: jest.fn().mockResolvedValue({ id: 'week-1' }) },
+      trainingDay: { createMany: jest.fn() },
+    };
+    prisma = {
+      student: { findUnique: jest.fn().mockResolvedValue({ userId: 'athlete-1' }) },
+      $transaction: jest.fn(async (cb: any) => cb(tx)),
+      __tx: tx,
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+
+    service = module.get(TrainingPlansService);
+  });
+
+  it('normaliza uma quarta-feira (2026-03-11) pra a segunda-feira da mesma semana (2026-03-09)', async () => {
+    await service.create('coach-1', {
+      studentId: 'student-1', month: 1, title: 'Mesociclo 1', startDate: '2026-03-11',
+    } as any);
+
+    const dataGravada = prisma.__tx.trainingPlan.create.mock.calls[0][0].data;
+    expect(dataGravada.startDate.toISOString().slice(0, 10)).toBe('2026-03-09');
+  });
+
+  it('mantém uma segunda-feira (2026-03-09) igual', async () => {
+    await service.create('coach-1', {
+      studentId: 'student-1', month: 1, title: 'Mesociclo 1', startDate: '2026-03-09',
+    } as any);
+
+    const dataGravada = prisma.__tx.trainingPlan.create.mock.calls[0][0].data;
+    expect(dataGravada.startDate.toISOString().slice(0, 10)).toBe('2026-03-09');
+  });
+
+  it('normaliza um domingo (2026-03-15) pra a segunda-feira ANTERIOR (2026-03-09), não a próxima', async () => {
+    await service.create('coach-1', {
+      studentId: 'student-1', month: 1, title: 'Mesociclo 1', startDate: '2026-03-15',
+    } as any);
+
+    const dataGravada = prisma.__tx.trainingPlan.create.mock.calls[0][0].data;
+    expect(dataGravada.startDate.toISOString().slice(0, 10)).toBe('2026-03-09');
+  });
+});

@@ -9,6 +9,21 @@ import {
 type AuthUser = { id: string; role: string };
 
 /**
+ * Normaliza uma data "YYYY-MM-DD" pra a Segunda-feira (dayIndex=1) da mesma
+ * semana, em UTC — nunca em fuso local, pra não depender do fuso do
+ * servidor. dayIndex já segue 1=Segunda...6=Sábado (0=Domingo, no enum mas
+ * não usado na prática), então startDate SEMPRE representa uma Segunda.
+ */
+function normalizeToMonday(isoDateOnly: string): Date {
+  const [y, m, d] = isoDateOnly.slice(0, 10).split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayOfWeek = date.getUTCDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  date.setUTCDate(date.getUTCDate() + diffToMonday);
+  return date;
+}
+
+/**
  * Monta o `include` completo do plano, sempre filtrado pelo `athleteId` dono do plano.
  * Sem esse filtro, `workoutLogs`/`workoutSkips` de QUALQUER atleta apareceriam
  * associados aos exercícios/sessões deste plano (achado de IDOR na revisão final).
@@ -169,9 +184,11 @@ export class TrainingPlansService {
       { dayOfWeek: 'Sábado',  dayIndex: 6 },
     ];
 
+    const startDate = normalizeToMonday(dto.startDate);
+
     return this.prisma.$transaction(async tx => {
       const plan = await tx.trainingPlan.create({
-        data: { ...dto, coachId },
+        data: { ...dto, coachId, startDate },
       });
 
       for (let w = 1; w <= WEEKS; w++) {

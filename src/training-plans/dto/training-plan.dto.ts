@@ -1,6 +1,6 @@
 import {
   IsString, IsNumber, IsBoolean, IsOptional, IsEnum,
-  IsUrl, IsArray, ValidateNested, Min, Max,
+  IsUrl, IsArray, ValidateNested, Min, Max, IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -25,6 +25,10 @@ export class CreatePlanDto {
   @ApiProperty({ example: 1 })
   @IsNumber()
   month: number;
+
+  @ApiProperty({ example: '2026-03-09', description: 'Data de início real (Segunda-feira da Semana 1) — string YYYY-MM-DD, normalizada no backend' })
+  @IsDateString()
+  startDate: string;
 
   @ApiProperty({ example: 'Mês 1 — Programação Gustavo' })
   @IsString()

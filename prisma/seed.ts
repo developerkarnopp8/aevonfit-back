@@ -65,6 +65,7 @@ async function main() {
       studentId: student.id,
       coachId: coach.id,
       month: 1,
+      startDate: new Date('2026-04-13T00:00:00Z'), // Segunda-feira — mesmo valor já em uso no banco de desenvolvimento
       title: 'Mês 1 — Programação Gustavo',
       published: true,
     },

@@ -52,6 +52,8 @@ model User {
   workoutSkips     WorkoutSkip[]
   hydrationLogs    HydrationLog[]
   calorieLogs      CalorieLog[]
+  movements        Movement[]
+  personalRecords  PersonalRecord[]
 
   @@map("users")
 }
@@ -282,4 +284,33 @@ model CalorieLog {
   athlete User @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@map("calorie_logs")
+}
+
+model Movement {
+  id        String   @id @default(uuid())
+  name      String
+  category  String
+  coachId   String?
+  createdAt DateTime @default(now())
+
+  coach           User?            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  personalRecords PersonalRecord[]
+
+  @@map("movements")
+}
+
+model PersonalRecord {
+  id         String   @id @default(uuid())
+  athleteId  String
+  movementId String
+  loadKg     Float?
+  reps       Int?
+  achievedAt DateTime @default(now())
+  note       String?
+  createdAt  DateTime @default(now())
+
+  athlete  User     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  movement Movement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+
+  @@map("personal_records")
 }

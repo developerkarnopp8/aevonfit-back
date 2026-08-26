@@ -48,3 +48,30 @@ describe('PersonalRecordsService.create', () => {
     expect(prisma.personalRecord.create).not.toHaveBeenCalled();
   });
 });
+
+describe('PersonalRecordsService.getMyHistory', () => {
+  let service: PersonalRecordsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = { personalRecord: { findMany: jest.fn().mockResolvedValue([]) } };
+    const module = await Test.createTestingModule({
+      providers: [
+        PersonalRecordsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: { findOne: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(PersonalRecordsService);
+  });
+
+  it('busca o historico do proprio atleta, mais recente primeiro, com o movimento incluido', async () => {
+    await service.getMyHistory('athlete-1');
+
+    expect(prisma.personalRecord.findMany).toHaveBeenCalledWith({
+      where: { athleteId: 'athlete-1' },
+      include: { movement: true },
+      orderBy: { achievedAt: 'desc' },
+    });
+  });
+});

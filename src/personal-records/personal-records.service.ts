@@ -26,4 +26,12 @@ export class PersonalRecordsService {
       },
     });
   }
+
+  async getMyHistory(athleteId: string) {
+    return this.prisma.personalRecord.findMany({
+      where: { athleteId },
+      include: { movement: true },
+      orderBy: { achievedAt: 'desc' },
+    });
+  }
 }

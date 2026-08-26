@@ -34,4 +34,14 @@ export class PersonalRecordsService {
       orderBy: { achievedAt: 'desc' },
     });
   }
+
+  /** Histórico completo de um aluno, pro gráfico do coach — só o coach dono. */
+  async getHistoryForStudent(studentId: string, user: AuthUser) {
+    const student = await this.studentsService.findOne(studentId, user);
+    return this.prisma.personalRecord.findMany({
+      where: { athleteId: student.userId },
+      include: { movement: true },
+      orderBy: { achievedAt: 'desc' },
+    });
+  }
 }

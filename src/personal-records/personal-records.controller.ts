@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -25,5 +25,12 @@ export class PersonalRecordsController {
   @ApiOperation({ summary: 'Meu histórico completo de PRs, mais recente primeiro' })
   getMine(@Request() req: any) {
     return this.service.getMyHistory(req.user.id);
+  }
+
+  @Roles('coach')
+  @Get('student/:studentId/history')
+  @ApiOperation({ summary: 'Histórico completo de PRs de um aluno — coach dono' })
+  getStudentHistory(@Param('studentId') studentId: string, @Request() req: any) {
+    return this.service.getHistoryForStudent(studentId, req.user);
   }
 }

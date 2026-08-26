@@ -75,3 +75,47 @@ describe('PersonalRecordsService.getMyHistory', () => {
     });
   });
 });
+
+describe('PersonalRecordsService.getHistoryForStudent', () => {
+  let service: PersonalRecordsService;
+  let prisma: any;
+  let studentsService: { findOne: jest.Mock };
+
+  const coachUser = { id: 'coach-1', role: 'coach' };
+  const student = { id: 'student-1', userId: 'athlete-1', coachId: 'coach-1' };
+
+  beforeEach(async () => {
+    prisma = { personalRecord: { findMany: jest.fn().mockResolvedValue([]) } };
+    studentsService = { findOne: jest.fn().mockResolvedValue(student) };
+    const module = await Test.createTestingModule({
+      providers: [
+        PersonalRecordsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: studentsService },
+      ],
+    }).compile();
+    service = module.get(PersonalRecordsService);
+  });
+
+  it('checa dono do aluno antes de retornar o historico', async () => {
+    await service.getHistoryForStudent('student-1', coachUser);
+
+    expect(studentsService.findOne).toHaveBeenCalledWith('student-1', coachUser);
+    expect(prisma.personalRecord.findMany).toHaveBeenCalledWith({
+      where: { athleteId: 'athlete-1' },
+      include: { movement: true },
+      orderBy: { achievedAt: 'desc' },
+    });
+  });
+
+  it('propaga ForbiddenException quando o coach nao e dono do aluno, sem buscar nada', async () => {
+    const { ForbiddenException } = await import('@nestjs/common');
+    studentsService.findOne.mockRejectedValue(new ForbiddenException());
+
+    await expect(
+      service.getHistoryForStudent('student-1', coachUser),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(prisma.personalRecord.findMany).not.toHaveBeenCalled();
+  });
+});

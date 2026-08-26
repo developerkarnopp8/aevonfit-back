@@ -27,6 +27,13 @@ export class TrainingPlansController {
     return this.service.findByStudent(studentId, req.user);
   }
 
+  @Roles('coach')
+  @Get('coach/weekly-completion')
+  @ApiOperation({ summary: '% real de conclusão por dia da semana, agregado entre todos os alunos do coach (dashboard)' })
+  getWeeklyCompletion(@Request() req: any) {
+    return this.service.getWeeklyCompletionByDayIndex(req.user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Retorna plano completo (semanas > dias > sessões > exercícios)' })
   findById(@Param('id') id: string, @Request() req: any) {

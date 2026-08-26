@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 import { SkipReason, SkipDecision } from '@prisma/client';
 
 export class CreateWorkoutSkipDto {
@@ -20,6 +20,7 @@ export class CreateWorkoutSkipDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 
   @ApiProperty({ enum: SkipDecision })

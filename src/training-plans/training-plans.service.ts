@@ -8,7 +8,12 @@ import {
 
 type AuthUser = { id: string; role: string };
 
-const fullPlanInclude = {
+/**
+ * Monta o `include` completo do plano, sempre filtrado pelo `athleteId` dono do plano.
+ * Sem esse filtro, `workoutLogs`/`workoutSkips` de QUALQUER atleta apareceriam
+ * associados aos exercícios/sessões deste plano (achado de IDOR na revisão final).
+ */
+const fullPlanInclude = (athleteId: string) => ({
   weeks: {
     orderBy: { weekNumber: 'asc' as const },
     include: {
@@ -18,14 +23,21 @@ const fullPlanInclude = {
           sessions: {
             orderBy: { order: 'asc' as const },
             include: {
-              exercises: { orderBy: { order: 'asc' as const } },
+              workoutSkips: { where: { athleteId }, orderBy: { createdAt: 'desc' as const }, take: 1 },
+              exercises: {
+                orderBy: { order: 'asc' as const },
+                include: {
+                  workoutLogs: { where: { athleteId }, select: { id: true } },
+                  workoutSkips: { where: { athleteId }, orderBy: { createdAt: 'desc' as const }, take: 1 },
+                },
+              },
             },
           },
         },
       },
     },
   },
-};
+});
 
 @Injectable()
 export class TrainingPlansService {
@@ -33,8 +45,8 @@ export class TrainingPlansService {
 
   // ── Autorização ──────────────────────────────────────────────────────────
 
-  /** Coach dono do plano, ou o próprio aluno dono do plano — ninguém mais. */
-  private async assertCanViewStudent(studentId: string, user: AuthUser) {
+  /** Coach dono do plano, ou o próprio aluno dono do plano — ninguém mais. Retorna o userId (athleteId) do aluno. */
+  private async assertCanViewStudent(studentId: string, user: AuthUser): Promise<{ userId: string }> {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       select: { coachId: true, userId: true },
@@ -45,9 +57,11 @@ export class TrainingPlansService {
     if (!isOwningCoach && !isSelf) {
       throw new ForbiddenException('Você não tem acesso a este aluno.');
     }
+    return student;
   }
 
-  private async assertCanViewPlan(planId: string, user: AuthUser) {
+  /** Coach dono do plano, ou o próprio aluno dono do plano — ninguém mais. Retorna o athleteId dono do plano. */
+  private async assertCanViewPlan(planId: string, user: AuthUser): Promise<{ athleteId: string }> {
     const plan = await this.prisma.trainingPlan.findUnique({
       where: { id: planId },
       select: { coachId: true, student: { select: { userId: true } } },
@@ -58,6 +72,17 @@ export class TrainingPlansService {
     if (!isOwningCoach && !isSelf) {
       throw new ForbiddenException('Você não tem acesso a este plano.');
     }
+    return { athleteId: plan.student.userId };
+  }
+
+  /** Busca o athleteId (userId do aluno) dono do plano — usado quando quem chama já sabe que tem acesso (ex.: coach dono). */
+  private async resolveAthleteIdForPlan(planId: string): Promise<string> {
+    const plan = await this.prisma.trainingPlan.findUnique({
+      where: { id: planId },
+      select: { student: { select: { userId: true } } },
+    });
+    if (!plan) throw new NotFoundException('Plano não encontrado');
+    return plan.student.userId;
   }
 
   /** Só o coach dono pode criar/editar/apagar conteúdo do plano. */
@@ -108,25 +133,32 @@ export class TrainingPlansService {
   // ── Plans ────────────────────────────────────────────────────────────────
 
   async findByStudent(studentId: string, user: AuthUser) {
-    await this.assertCanViewStudent(studentId, user);
+    const { userId: athleteId } = await this.assertCanViewStudent(studentId, user);
     return this.prisma.trainingPlan.findMany({
       where: { studentId },
-      include: fullPlanInclude,
+      include: fullPlanInclude(athleteId),
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findById(id: string, user: AuthUser) {
-    await this.assertCanViewPlan(id, user);
+    const { athleteId } = await this.assertCanViewPlan(id, user);
     const plan = await this.prisma.trainingPlan.findUnique({
       where: { id },
-      include: fullPlanInclude,
+      include: fullPlanInclude(athleteId),
     });
     if (!plan) throw new NotFoundException('Plano não encontrado');
     return plan;
   }
 
   async create(coachId: string, dto: CreatePlanDto) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: dto.studentId },
+      select: { userId: true },
+    });
+    if (!student) throw new NotFoundException('Aluno não encontrado');
+    const athleteId = student.userId;
+
     const WEEKS = 4;
     const DAYS = [
       { dayOfWeek: 'Segunda', dayIndex: 1 },
@@ -153,7 +185,7 @@ export class TrainingPlansService {
 
       return tx.trainingPlan.findUnique({
         where: { id: plan.id },
-        include: fullPlanInclude,
+        include: fullPlanInclude(athleteId),
       });
     });
   }
@@ -181,9 +213,10 @@ export class TrainingPlansService {
   /** Garante que o plano tenha 4 semanas × 6 dias. Idempotente. */
   async initializeWeeks(planId: string, coachId: string) {
     await this.assertCoachOwnsPlan(planId, coachId);
+    const athleteId = await this.resolveAthleteIdForPlan(planId);
     const existingWeeks = await this.prisma.week.count({ where: { planId } });
     if (existingWeeks > 0) {
-      return this.prisma.trainingPlan.findUnique({ where: { id: planId }, include: fullPlanInclude });
+      return this.prisma.trainingPlan.findUnique({ where: { id: planId }, include: fullPlanInclude(athleteId) });
     }
 
     const DAYS = [
@@ -202,7 +235,7 @@ export class TrainingPlansService {
       }
     });
 
-    return this.prisma.trainingPlan.findUnique({ where: { id: planId }, include: fullPlanInclude });
+    return this.prisma.trainingPlan.findUnique({ where: { id: planId }, include: fullPlanInclude(athleteId) });
   }
 
   async addWeek(planId: string, coachId: string, dto: CreateWeekDto) {

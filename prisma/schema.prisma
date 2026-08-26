@@ -32,23 +32,24 @@ enum SessionType {
 }
 
 model User {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
-  email        String    @unique
+  email        String   @unique
   passwordHash String
-  role         Role      @default(athlete)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         Role     @default(athlete)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  student         Student?          @relation("UserStudent")
-  coachStudents   Student[]         @relation("CoachStudents")
-  coachPlans      TrainingPlan[]    @relation("CoachPlans")
-  workoutLogs     WorkoutLog[]
-  exerciseLibrary ExerciseLibrary[] @relation("CoachLibrary")
-  coachPayments   Payment[]         @relation("CoachPayments")
-  sentMessages    Message[]         @relation("SentMessages")
-  receivedMessages Message[]        @relation("ReceivedMessages")
+  student          Student?          @relation("UserStudent")
+  coachStudents    Student[]         @relation("CoachStudents")
+  coachPlans       TrainingPlan[]    @relation("CoachPlans")
+  workoutLogs      WorkoutLog[]
+  exerciseLibrary  ExerciseLibrary[] @relation("CoachLibrary")
+  coachPayments    Payment[]         @relation("CoachPayments")
+  sentMessages     Message[]         @relation("SentMessages")
+  receivedMessages Message[]         @relation("ReceivedMessages")
+  workoutSkips     WorkoutSkip[]
 
   @@map("users")
 }
@@ -130,8 +131,9 @@ model Session {
   updatedAt DateTime    @updatedAt
 
   // Relations
-  day       TrainingDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  exercises Exercise[]
+  day          TrainingDay   @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercises    Exercise[]
+  workoutSkips WorkoutSkip[]
 
   @@map("sessions")
 }
@@ -152,8 +154,9 @@ model Exercise {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  workoutLogs WorkoutLog[]
+  session      Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutLogs  WorkoutLog[]
+  workoutSkips WorkoutSkip[]
 
   @@map("exercises")
 }
@@ -197,32 +200,62 @@ model Payment {
 }
 
 model Message {
-  id         String   @id @default(uuid())
-  fromId     String
-  toId       String
-  content    String
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  fromId    String
+  toId      String
+  content   String
+  read      Boolean  @default(false)
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  from User @relation("SentMessages",     fields: [fromId], references: [id], onDelete: Cascade)
-  to   User @relation("ReceivedMessages", fields: [toId],   references: [id], onDelete: Cascade)
+  from User @relation("SentMessages", fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedMessages", fields: [toId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
 
 model WorkoutLog {
-  id             String   @id @default(uuid())
-  exerciseId     String
-  athleteId      String
-  completedAt    DateTime @default(now())
-  setsCompleted  Int
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(uuid())
+  exerciseId    String
+  athleteId     String
+  completedAt   DateTime @default(now())
+  setsCompleted Int
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   athlete  User     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@map("workout_logs")
+}
+
+enum SkipReason {
+  NoTime
+  Injury
+  Later
+  Other
+}
+
+enum SkipDecision {
+  Postponed
+  Abandoned
+}
+
+model WorkoutSkip {
+  id         String       @id @default(uuid())
+  exerciseId String?
+  sessionId  String?
+  athleteId  String
+  reason     SkipReason
+  note       String?
+  decision   SkipDecision
+  createdAt  DateTime     @default(now())
+
+  exercise Exercise? @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  session  Session?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  athlete  User      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@map("workout_skips")
 }

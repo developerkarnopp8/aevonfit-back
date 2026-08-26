@@ -12,6 +12,7 @@ import { WorkoutLogsModule } from './workout-logs/workout-logs.module';
 import { ExerciseLibraryModule } from './exercise-library/exercise-library.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MessagesModule } from './messages/messages.module';
+import { WorkoutSkipsModule } from './workout-skips/workout-skips.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MessagesModule } from './messages/messages.module';
     ExerciseLibraryModule,
     PaymentsModule,
     MessagesModule,
+    WorkoutSkipsModule,
   ],
   providers: [
     {

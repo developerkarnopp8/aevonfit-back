@@ -74,8 +74,18 @@ export class WorkoutSkipsService {
       where: {
         decision: 'Postponed',
         OR: [
-          { exercise: { workoutLogs: { none: {} }, session: { day: { week: { plan: { coachId } } } } } },
-          { session: { day: { week: { plan: { coachId } } } } },
+          {
+            exercise: {
+              workoutLogs: { none: {} },
+              session: { day: { week: { plan: { coachId } } } },
+            },
+          },
+          {
+            session: {
+              exercises: { some: { workoutLogs: { none: {} } } },
+              day: { week: { plan: { coachId } } },
+            },
+          },
         ],
       },
       include: {
@@ -84,14 +94,19 @@ export class WorkoutSkipsService {
       },
     });
 
-    const counts = new Map<string, number>();
+    // Um mesmo exercício/sessão pode ter sido pulado várias vezes (o item continua
+    // pendente até ser feito) — dedupe por alvo (exerciseId ?? sessionId) pra cada
+    // aluno contar no máximo 1 vez no badge de pendências.
+    const targetsByStudent = new Map<string, Set<string>>();
     for (const skip of skips) {
       const studentId = skip.exercise?.session.day.week.plan.studentId
         ?? skip.session?.day.week.plan.studentId;
-      if (!studentId) continue;
-      counts.set(studentId, (counts.get(studentId) ?? 0) + 1);
+      const targetKey = skip.exerciseId ?? skip.sessionId;
+      if (!studentId || !targetKey) continue;
+      if (!targetsByStudent.has(studentId)) targetsByStudent.set(studentId, new Set());
+      targetsByStudent.get(studentId)!.add(targetKey);
     }
 
-    return Array.from(counts, ([studentId, count]) => ({ studentId, count }));
+    return Array.from(targetsByStudent, ([studentId, targets]) => ({ studentId, count: targets.size }));
   }
 }

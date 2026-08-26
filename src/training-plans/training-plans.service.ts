@@ -321,28 +321,32 @@ export class TrainingPlansService {
     const totals = new Map<number, { total: number; done: number }>();
     for (let i = 0; i <= 6; i++) totals.set(i, { total: 0, done: 0 });
 
-    for (const student of students) {
-      const week = await this.prisma.week.findFirst({
-        where: {
-          weekNumber: student.currentWeek,
-          plan: { studentId: student.id, month: student.currentMonth },
-        },
-        include: {
-          days: {
-            include: {
-              sessions: {
-                include: {
-                  exercises: {
-                    include: { workoutLogs: { where: { athleteId: student.userId }, select: { id: true } } },
+    const weeks = await Promise.all(
+      students.map(student =>
+        this.prisma.week.findFirst({
+          where: {
+            weekNumber: student.currentWeek,
+            plan: { studentId: student.id, month: student.currentMonth },
+          },
+          include: {
+            days: {
+              include: {
+                sessions: {
+                  include: {
+                    exercises: {
+                      include: { workoutLogs: { where: { athleteId: student.userId }, select: { id: true } } },
+                    },
                   },
                 },
               },
             },
           },
-        },
-      });
-      if (!week) continue;
+        }),
+      ),
+    );
 
+    for (const week of weeks) {
+      if (!week) continue;
       for (const day of week.days) {
         const bucket = totals.get(day.dayIndex);
         if (!bucket) continue;

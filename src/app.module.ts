@@ -15,6 +15,7 @@ import { MessagesModule } from './messages/messages.module';
 import { WorkoutSkipsModule } from './workout-skips/workout-skips.module';
 import { DailyIntakeModule } from './daily-intake/daily-intake.module';
 import { MovementsModule } from './movements/movements.module';
+import { PersonalRecordsModule } from './personal-records/personal-records.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { MovementsModule } from './movements/movements.module';
     WorkoutSkipsModule,
     DailyIntakeModule,
     MovementsModule,
+    PersonalRecordsModule,
   ],
   providers: [
     {

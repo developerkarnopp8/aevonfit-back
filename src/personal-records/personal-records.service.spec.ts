@@ -1,0 +1,50 @@
+import { Test } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
+import { PersonalRecordsService } from './personal-records.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { StudentsService } from '../students/students.service';
+
+describe('PersonalRecordsService.create', () => {
+  let service: PersonalRecordsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = { personalRecord: { create: jest.fn() } };
+    const module = await Test.createTestingModule({
+      providers: [
+        PersonalRecordsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: { findOne: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(PersonalRecordsService);
+  });
+
+  it('cria o registro com loadKg', async () => {
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr1' });
+
+    await service.create('athlete-1', { movementId: 'mov-1', loadKg: 120 } as any);
+
+    expect(prisma.personalRecord.create).toHaveBeenCalledWith({
+      data: { athleteId: 'athlete-1', movementId: 'mov-1', loadKg: 120, reps: undefined, note: undefined },
+    });
+  });
+
+  it('cria o registro so com reps (movimento de corpo livre)', async () => {
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr2' });
+
+    await service.create('athlete-1', { movementId: 'mov-2', reps: 15 } as any);
+
+    expect(prisma.personalRecord.create).toHaveBeenCalledWith({
+      data: { athleteId: 'athlete-1', movementId: 'mov-2', loadKg: undefined, reps: 15, note: undefined },
+    });
+  });
+
+  it('rejeita quando nem loadKg nem reps sao informados', async () => {
+    await expect(
+      service.create('athlete-1', { movementId: 'mov-1' } as any),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.personalRecord.create).not.toHaveBeenCalled();
+  });
+});

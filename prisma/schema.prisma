@@ -83,6 +83,7 @@ model TrainingPlan {
   studentId String
   coachId   String
   month     Int
+  startDate DateTime
   title     String
   published Boolean  @default(false)
   createdAt DateTime @default(now())

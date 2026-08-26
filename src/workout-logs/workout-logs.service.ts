@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkoutLogDto } from './dto/create-workout-log.dto';
+import { StudentsService } from '../students/students.service';
+
+type AuthUser = { id: string; role: string };
 
 @Injectable()
 export class WorkoutLogsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private studentsService: StudentsService,
+  ) {}
 
   async logExercise(athleteId: string, dto: CreateWorkoutLogDto) {
     return this.prisma.workoutLog.create({
@@ -48,6 +54,12 @@ export class WorkoutLogsService {
         },
       },
     });
+  }
+
+  /** Histórico de treino de um aluno específico — só o coach dono (ou o próprio atleta). */
+  async getStudentHistory(studentId: string, user: AuthUser, limit = 50) {
+    const student = await this.studentsService.findOne(studentId, user);
+    return this.getHistory(student.userId, limit);
   }
 
   async getSessionLogs(sessionId: string, athleteId: string) {

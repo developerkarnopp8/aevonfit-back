@@ -32,13 +32,64 @@ export class StudentsService {
   }
 
   async findAll(coachId: string) {
-    return this.prisma.student.findMany({
+    const students = await this.prisma.student.findMany({
       where: { coachId },
       include: {
         user: { select: { id: true, name: true, email: true, role: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return Promise.all(
+      students.map(async s => ({
+        ...s,
+        completionPercent: await this.computeCompletionPercent(s.id, s.currentMonth, s.userId),
+      })),
+    );
+  }
+
+  /**
+   * % real de exercícios com WorkoutLog no plano do mês atual do aluno.
+   * `completionPercent` era uma coluna estática (@default(0)) nunca
+   * recalculada — na prática ficava travada no valor de seed migrado do
+   * mock antigo (68), sem relação com o progresso real.
+   */
+  private async computeCompletionPercent(studentId: string, month: number, athleteId: string): Promise<number> {
+    const plan = await this.prisma.trainingPlan.findFirst({
+      where: { studentId, month },
+      include: {
+        weeks: {
+          include: {
+            days: {
+              include: {
+                sessions: {
+                  include: {
+                    exercises: {
+                      include: { workoutLogs: { where: { athleteId }, select: { id: true } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!plan) return 0;
+
+    let total = 0;
+    let done = 0;
+    for (const week of plan.weeks) {
+      for (const day of week.days) {
+        for (const session of day.sessions) {
+          for (const exercise of session.exercises) {
+            total++;
+            if (exercise.workoutLogs.length > 0) done++;
+          }
+        }
+      }
+    }
+    return total > 0 ? Math.round((done / total) * 100) : 0;
   }
 
   async findOne(id: string, user: AuthUser) {

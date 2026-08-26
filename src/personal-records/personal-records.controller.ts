@@ -1,0 +1,36 @@
+import { Controller, Get, Post, Body, Param, Request, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { PersonalRecordsService } from './personal-records.service';
+import { CreatePersonalRecordDto } from './dto/create-personal-record.dto';
+
+@ApiTags('personal-records')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('personal-records')
+export class PersonalRecordsController {
+  constructor(private readonly service: PersonalRecordsService) {}
+
+  @Roles('athlete')
+  @Post()
+  @ApiOperation({ summary: 'Registra uma tentativa de PR (carga e/ou reps)' })
+  create(@Body() dto: CreatePersonalRecordDto, @Request() req: any) {
+    return this.service.create(req.user.id, dto);
+  }
+
+  @Roles('athlete')
+  @Get('me')
+  @ApiOperation({ summary: 'Meu histórico completo de PRs, mais recente primeiro' })
+  getMine(@Request() req: any) {
+    return this.service.getMyHistory(req.user.id);
+  }
+
+  @Roles('coach')
+  @Get('student/:studentId/history')
+  @ApiOperation({ summary: 'Histórico completo de PRs de um aluno — coach dono' })
+  getStudentHistory(@Param('studentId') studentId: string, @Request() req: any) {
+    return this.service.getHistoryForStudent(studentId, req.user);
+  }
+}

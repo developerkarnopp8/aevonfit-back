@@ -14,6 +14,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { MessagesModule } from './messages/messages.module';
 import { WorkoutSkipsModule } from './workout-skips/workout-skips.module';
 import { DailyIntakeModule } from './daily-intake/daily-intake.module';
+import { MovementsModule } from './movements/movements.module';
+import { PersonalRecordsModule } from './personal-records/personal-records.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { DailyIntakeModule } from './daily-intake/daily-intake.module';
     MessagesModule,
     WorkoutSkipsModule,
     DailyIntakeModule,
+    MovementsModule,
+    PersonalRecordsModule,
   ],
   providers: [
     {

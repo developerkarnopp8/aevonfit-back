@@ -50,6 +50,8 @@ model User {
   sentMessages     Message[]         @relation("SentMessages")
   receivedMessages Message[]         @relation("ReceivedMessages")
   workoutSkips     WorkoutSkip[]
+  hydrationLogs    HydrationLog[]
+  calorieLogs      CalorieLog[]
 
   @@map("users")
 }
@@ -258,4 +260,26 @@ model WorkoutSkip {
   athlete  User      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@map("workout_skips")
+}
+
+model HydrationLog {
+  id        String   @id @default(uuid())
+  athleteId String
+  amountMl  Int
+  loggedAt  DateTime @default(now())
+
+  athlete User @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@map("hydration_logs")
+}
+
+model CalorieLog {
+  id        String   @id @default(uuid())
+  athleteId String
+  kcal      Int
+  loggedAt  DateTime @default(now())
+
+  athlete User @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@map("calorie_logs")
 }

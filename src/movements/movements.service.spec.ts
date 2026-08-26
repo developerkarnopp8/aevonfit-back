@@ -44,6 +44,44 @@ describe('MovementsService.findAvailable', () => {
   });
 });
 
+describe('MovementsService.isAvailableForUser', () => {
+  let service: MovementsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = {
+      movement: { findFirst: jest.fn() },
+      student: { findFirst: jest.fn() },
+    };
+    const module = await Test.createTestingModule({
+      providers: [MovementsService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+    service = module.get(MovementsService);
+  });
+
+  it('atleta: retorna true quando o movimento e global ou do proprio coach', async () => {
+    prisma.student.findFirst.mockResolvedValue({ coachId: 'coach-9' });
+    prisma.movement.findFirst.mockResolvedValue({ id: 'mov-1' });
+
+    const result = await service.isAvailableForUser({ id: 'athlete-1', role: 'athlete' }, 'mov-1');
+
+    expect(prisma.movement.findFirst).toHaveBeenCalledWith({
+      where: { id: 'mov-1', OR: [{ coachId: null }, { coachId: 'coach-9' }] },
+      select: { id: true },
+    });
+    expect(result).toBe(true);
+  });
+
+  it('atleta: retorna false quando o movimento pertence a outro coach', async () => {
+    prisma.student.findFirst.mockResolvedValue({ coachId: 'coach-9' });
+    prisma.movement.findFirst.mockResolvedValue(null);
+
+    const result = await service.isAvailableForUser({ id: 'athlete-1', role: 'athlete' }, 'mov-de-outro-coach');
+
+    expect(result).toBe(false);
+  });
+});
+
 describe('MovementsService.create', () => {
   let service: MovementsService;
   let prisma: any;

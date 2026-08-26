@@ -1,20 +1,24 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PersonalRecordsService } from './personal-records.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
+import { MovementsService } from '../movements/movements.service';
 
 describe('PersonalRecordsService.create', () => {
   let service: PersonalRecordsService;
   let prisma: any;
+  let movementsService: { isAvailableForUser: jest.Mock };
 
   beforeEach(async () => {
     prisma = { personalRecord: { create: jest.fn() } };
+    movementsService = { isAvailableForUser: jest.fn().mockResolvedValue(true) };
     const module = await Test.createTestingModule({
       providers: [
         PersonalRecordsService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: { findOne: jest.fn() } },
+        { provide: MovementsService, useValue: movementsService },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);
@@ -25,6 +29,7 @@ describe('PersonalRecordsService.create', () => {
 
     await service.create('athlete-1', { movementId: 'mov-1', loadKg: 120 } as any);
 
+    expect(movementsService.isAvailableForUser).toHaveBeenCalledWith({ id: 'athlete-1', role: 'athlete' }, 'mov-1');
     expect(prisma.personalRecord.create).toHaveBeenCalledWith({
       data: { athleteId: 'athlete-1', movementId: 'mov-1', loadKg: 120, reps: undefined, note: undefined },
     });
@@ -47,6 +52,16 @@ describe('PersonalRecordsService.create', () => {
 
     expect(prisma.personalRecord.create).not.toHaveBeenCalled();
   });
+
+  it('rejeita quando o movimento nao esta no catalogo disponivel pro atleta', async () => {
+    movementsService.isAvailableForUser.mockResolvedValue(false);
+
+    await expect(
+      service.create('athlete-1', { movementId: 'mov-de-outro-coach', loadKg: 100 } as any),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(prisma.personalRecord.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('PersonalRecordsService.getMyHistory', () => {
@@ -60,6 +75,7 @@ describe('PersonalRecordsService.getMyHistory', () => {
         PersonalRecordsService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: { findOne: jest.fn() } },
+        { provide: MovementsService, useValue: { isAvailableForUser: jest.fn() } },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);
@@ -92,6 +108,7 @@ describe('PersonalRecordsService.getHistoryForStudent', () => {
         PersonalRecordsService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },
+        { provide: MovementsService, useValue: { isAvailableForUser: jest.fn() } },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);

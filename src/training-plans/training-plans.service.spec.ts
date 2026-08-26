@@ -215,7 +215,7 @@ describe('TrainingPlansService.create — normalização de startDate', () => {
       trainingDay: { createMany: jest.fn() },
     };
     prisma = {
-      student: { findUnique: jest.fn().mockResolvedValue({ userId: 'athlete-1' }) },
+      student: { findUnique: jest.fn().mockResolvedValue({ userId: 'athlete-1', coachId: 'coach-1' }) },
       $transaction: jest.fn(async (cb: any) => cb(tx)),
       __tx: tx,
     };
@@ -252,5 +252,55 @@ describe('TrainingPlansService.create — normalização de startDate', () => {
 
     const dataGravada = prisma.__tx.trainingPlan.create.mock.calls[0][0].data;
     expect(dataGravada.startDate.toISOString().slice(0, 10)).toBe('2026-03-09');
+  });
+});
+
+describe('TrainingPlansService.create — checagem de dono do aluno', () => {
+  let service: TrainingPlansService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    const tx = {
+      trainingPlan: {
+        create: jest.fn().mockResolvedValue({ id: 'plan-1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'plan-1', weeks: [] }),
+      },
+      week: { create: jest.fn().mockResolvedValue({ id: 'week-1' }) },
+      trainingDay: { createMany: jest.fn() },
+    };
+    prisma = {
+      student: { findUnique: jest.fn() },
+      $transaction: jest.fn(async (cb: any) => cb(tx)),
+      __tx: tx,
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+
+    service = module.get(TrainingPlansService);
+  });
+
+  it('cria o plano quando o aluno pertence ao coach autenticado', async () => {
+    prisma.student.findUnique.mockResolvedValue({ userId: 'athlete-1', coachId: 'coach-1' });
+
+    await service.create('coach-1', {
+      studentId: 'student-1', month: 1, title: 'Mesociclo 1', startDate: '2026-03-09',
+    } as any);
+
+    expect(prisma.__tx.trainingPlan.create).toHaveBeenCalled();
+  });
+
+  it('rejeita com ForbiddenException quando o aluno pertence a OUTRO coach (IDOR)', async () => {
+    const { ForbiddenException } = await import('@nestjs/common');
+    prisma.student.findUnique.mockResolvedValue({ userId: 'athlete-1', coachId: 'coach-9' });
+
+    await expect(
+      service.create('coach-1', {
+        studentId: 'student-1', month: 1, title: 'Mesociclo 1', startDate: '2026-03-09',
+      } as any),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(prisma.__tx.trainingPlan.create).not.toHaveBeenCalled();
   });
 });

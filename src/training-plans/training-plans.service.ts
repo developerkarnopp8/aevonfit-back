@@ -169,9 +169,12 @@ export class TrainingPlansService {
   async create(coachId: string, dto: CreatePlanDto) {
     const student = await this.prisma.student.findUnique({
       where: { id: dto.studentId },
-      select: { userId: true },
+      select: { userId: true, coachId: true },
     });
     if (!student) throw new NotFoundException('Aluno não encontrado');
+    if (student.coachId !== coachId) {
+      throw new ForbiddenException('Você não tem acesso a este aluno.');
+    }
     const athleteId = student.userId;
 
     const WEEKS = 4;

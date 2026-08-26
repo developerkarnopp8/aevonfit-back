@@ -94,9 +94,10 @@ Variáveis obrigatórias:
 | auth | POST /auth/login |
 | users | POST /users, GET /users/me |
 | students | GET /students, GET /students/me, GET /students/:id, GET /students/:id/plan, POST /students, PATCH /students/:id, DELETE /students/:id |
-| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, POST /training-plans, PATCH /training-plans/:id/publish, POST /training-plans/:id/initialize, + weeks/days/sessions/exercises CRUD |
-| sessions | GET /sessions/:id (inclui exercícios + último log do atleta) |
-| workout-logs | POST /workout-logs, GET /workout-logs/history, GET /workout-logs/session/:id, GET /workout-logs/exercise/:id |
+| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, GET /training-plans/coach/weekly-completion (dashboard, % real de conclusão por dia da semana entre os alunos do coach), POST /training-plans, PATCH /training-plans/:id/publish, POST /training-plans/:id/initialize, + weeks/days/sessions/exercises CRUD |
+| sessions | GET /sessions/:id (inclui exercícios + último log do atleta, e workoutSkips filtrado por dono do plano) |
+| workout-logs | POST /workout-logs, GET /workout-logs/history, GET /workout-logs/session/:id, GET /workout-logs/exercise/:id, GET /workout-logs/student/:studentId/history |
+| workout-skips | POST /workout-skips (atleta pula exercício/sessão com motivo, envia mensagem automática pro coach), GET /workout-skips/pending-count (coach, contagem de pulos pendentes por aluno) |
 | messages | GET /messages/inbox, GET /messages/unread, GET /messages/:otherId, POST /messages — WebSocket namespace `/messages` para real-time |
 
 ## Modelo de Dados
@@ -134,4 +135,4 @@ User (coach|athlete)
 
 ---
 
-_Última atualização: 2026-04-17 — Adicionado módulo de mensagens: REST + WebSocket real-time, notificações do browser_
+_Última atualização: 2026-08-26 — Módulo workout-skips (pular treino com justificativa) e rota de dashboard GET /training-plans/coach/weekly-completion_

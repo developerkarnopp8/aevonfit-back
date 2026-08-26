@@ -304,4 +304,66 @@ export class TrainingPlansService {
     await this.assertCoachOwnsPlan(planId, coachId);
     return this.prisma.exercise.delete({ where: { id: exerciseId } });
   }
+
+  // ── Dashboard ────────────────────────────────────────────────────────────
+
+  /**
+   * % real de exercícios concluídos (com WorkoutLog) por dia da semana
+   * (dayIndex 0-6), agregado entre todos os alunos do coach, cada um na
+   * própria semana atual (`student.currentMonth`/`currentWeek`).
+   */
+  async getWeeklyCompletionByDayIndex(coachId: string): Promise<{ dayIndex: number; percent: number }[]> {
+    const students = await this.prisma.student.findMany({
+      where: { coachId },
+      select: { id: true, userId: true, currentMonth: true, currentWeek: true },
+    });
+
+    const totals = new Map<number, { total: number; done: number }>();
+    for (let i = 0; i <= 6; i++) totals.set(i, { total: 0, done: 0 });
+
+    const weeks = await Promise.all(
+      students.map(student =>
+        this.prisma.week.findFirst({
+          where: {
+            weekNumber: student.currentWeek,
+            plan: { studentId: student.id, month: student.currentMonth },
+          },
+          include: {
+            days: {
+              include: {
+                sessions: {
+                  include: {
+                    exercises: {
+                      include: { workoutLogs: { where: { athleteId: student.userId }, select: { id: true } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ),
+    );
+
+    for (const week of weeks) {
+      if (!week) continue;
+      for (const day of week.days) {
+        const bucket = totals.get(day.dayIndex);
+        if (!bucket) continue;
+        for (const session of day.sessions) {
+          for (const exercise of session.exercises) {
+            bucket.total++;
+            if (exercise.workoutLogs.length > 0) bucket.done++;
+          }
+        }
+      }
+    }
+
+    return Array.from(totals.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([dayIndex, { total, done }]) => ({
+        dayIndex,
+        percent: total > 0 ? Math.round((done / total) * 100) : 0,
+      }));
+  }
 }

@@ -33,7 +33,7 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('AevonFit API')
+    .setTitle('PulseRx API')
     .setDescription('Gym Management SaaS — REST API')
     .setVersion('1.0')
     .addBearerAuth()
@@ -43,7 +43,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`AevonFit API running on http://localhost:${port}/api`);
+  console.log(`PulseRx API running on http://localhost:${port}/api`);
   console.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 

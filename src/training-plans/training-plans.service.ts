@@ -15,7 +15,7 @@ type AuthUser = { id: string; role: string };
  * servidor. dayIndex já segue 1=Segunda...6=Sábado (0=Domingo, no enum mas
  * não usado na prática), então startDate SEMPRE representa uma Segunda.
  */
-function normalizeToMonday(isoDateOnly: string): Date {
+export function normalizeToMonday(isoDateOnly: string): Date {
   const [y, m, d] = isoDateOnly.slice(0, 10).split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   const dayOfWeek = date.getUTCDay(); // 0=Dom, 1=Seg, ..., 6=Sáb

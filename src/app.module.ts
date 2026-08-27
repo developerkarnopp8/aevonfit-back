@@ -17,6 +17,7 @@ import { DailyIntakeModule } from './daily-intake/daily-intake.module';
 import { MovementsModule } from './movements/movements.module';
 import { PersonalRecordsModule } from './personal-records/personal-records.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PdfImportModule } from './pdf-import/pdf-import.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     MovementsModule,
     PersonalRecordsModule,
     NotificationsModule,
+    PdfImportModule,
   ],
   providers: [
     {

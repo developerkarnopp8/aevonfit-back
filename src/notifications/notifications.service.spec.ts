@@ -2,15 +2,22 @@ import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagesGateway } from '../messages/messages.gateway';
 
 describe('NotificationsService.create', () => {
   let service: NotificationsService;
   let prisma: any;
+  let gateway: { emitNotification: jest.Mock };
 
   beforeEach(async () => {
     prisma = { notification: { create: jest.fn() } };
+    gateway = { emitNotification: jest.fn() };
     const module = await Test.createTestingModule({
-      providers: [NotificationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        NotificationsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MessagesGateway, useValue: gateway },
+      ],
     }).compile();
     service = module.get(NotificationsService);
   });
@@ -30,6 +37,14 @@ describe('NotificationsService.create', () => {
       },
     });
   });
+
+  it('emite em tempo real pro destinatario depois de gravar', async () => {
+    prisma.notification.create.mockResolvedValue({ id: 'n1', userId: 'user-1', type: 'plan_published' });
+
+    await service.create('user-1', 'plan_published', 'Novo plano publicado');
+
+    expect(gateway.emitNotification).toHaveBeenCalledWith('user-1', { id: 'n1', userId: 'user-1', type: 'plan_published' });
+  });
 });
 
 describe('NotificationsService.findAllForUser', () => {
@@ -39,7 +54,11 @@ describe('NotificationsService.findAllForUser', () => {
   beforeEach(async () => {
     prisma = { notification: { findMany: jest.fn().mockResolvedValue([]) } };
     const module = await Test.createTestingModule({
-      providers: [NotificationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        NotificationsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MessagesGateway, useValue: { emitNotification: jest.fn() } },
+      ],
     }).compile();
     service = module.get(NotificationsService);
   });
@@ -62,7 +81,11 @@ describe('NotificationsService.unreadCount', () => {
   beforeEach(async () => {
     prisma = { notification: { count: jest.fn().mockResolvedValue(3) } };
     const module = await Test.createTestingModule({
-      providers: [NotificationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        NotificationsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MessagesGateway, useValue: { emitNotification: jest.fn() } },
+      ],
     }).compile();
     service = module.get(NotificationsService);
   });
@@ -87,7 +110,11 @@ describe('NotificationsService.markAsRead', () => {
       },
     };
     const module = await Test.createTestingModule({
-      providers: [NotificationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        NotificationsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MessagesGateway, useValue: { emitNotification: jest.fn() } },
+      ],
     }).compile();
     service = module.get(NotificationsService);
   });
@@ -122,7 +149,11 @@ describe('NotificationsService.markAllAsRead', () => {
   beforeEach(async () => {
     prisma = { notification: { updateMany: jest.fn() } };
     const module = await Test.createTestingModule({
-      providers: [NotificationsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        NotificationsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MessagesGateway, useValue: { emitNotification: jest.fn() } },
+      ],
     }).compile();
     service = module.get(NotificationsService);
   });

@@ -1,16 +1,23 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagesGateway } from '../messages/messages.gateway';
 
 export type NotificationType = 'plan_published' | 'new_message' | 'workout_skipped' | 'new_pr';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => MessagesGateway))
+    private gateway: MessagesGateway,
+  ) {}
 
   async create(userId: string, type: NotificationType, title: string, body?: string, link?: string) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: { userId, type, title, body, link },
     });
+    this.gateway.emitNotification(userId, notification);
+    return notification;
   }
 
   async findAllForUser(userId: string) {

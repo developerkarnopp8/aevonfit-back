@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Request, UseGuards } from '@nestjs/
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsString, MinLength } from 'class-validator';
 import { MessagesService } from './messages.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 class SendMessageDto {
@@ -14,7 +15,10 @@ class SendMessageDto {
 @UseGuards(JwtAuthGuard)
 @Controller('messages')
 export class MessagesController {
-  constructor(private readonly service: MessagesService) {}
+  constructor(
+    private readonly service: MessagesService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   @Get('inbox')
   @ApiOperation({ summary: 'Lista conversas do usuário (última mensagem por contato)' })
@@ -37,7 +41,16 @@ export class MessagesController {
 
   @Post()
   @ApiOperation({ summary: 'Envia mensagem para um usuário' })
-  send(@Request() req: any, @Body() dto: SendMessageDto) {
-    return this.service.send(req.user.id, dto.toId, dto.content);
+  async send(@Request() req: any, @Body() dto: SendMessageDto) {
+    const message = await this.service.send(req.user.id, dto.toId, dto.content);
+    const recipientLink = req.user.role === 'coach' ? '/athlete/messages' : '/coach/messages';
+    await this.notificationsService.create(
+      dto.toId,
+      'new_message',
+      `Nova mensagem de ${req.user.name}`,
+      dto.content,
+      recipientLink,
+    );
+    return message;
   }
 }

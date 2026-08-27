@@ -22,6 +22,7 @@ services:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:?defina DB_PASSWORD no .env}@db:5432/aevonfit
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env — sem valor padrão por segurança}
       JWT_EXPIRES_IN: 7d
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?defina ANTHROPIC_API_KEY no .env}
       PORT: 3000
     ports:
       - '127.0.0.1:4120:3000'

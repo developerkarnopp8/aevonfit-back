@@ -71,39 +71,57 @@ const EXTRACTION_TOOL = {
   },
 };
 
+function requireAnthropicApiKey(): string {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'ANTHROPIC_API_KEY não configurado — defina a variável de ambiente antes de iniciar a aplicação.',
+    );
+  }
+  return apiKey;
+}
+
 @Injectable()
 export class AnthropicExtractionService {
-  private readonly client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  private readonly client = new Anthropic({ apiKey: requireAnthropicApiKey() });
   private readonly model = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
 
   async extract(pdfBuffer: Buffer): Promise<unknown> {
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 8192,
-      tools: [EXTRACTION_TOOL],
-      tool_choice: { type: 'tool', name: 'extract_training_plan' },
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBuffer.toString('base64'),
+    const finalMessage = await this.client.messages
+      .stream({
+        model: this.model,
+        max_tokens: 32000,
+        tools: [EXTRACTION_TOOL],
+        tool_choice: { type: 'tool', name: 'extract_training_plan' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: pdfBuffer.toString('base64'),
+                },
               },
-            },
-            {
-              type: 'text',
-              text: 'Extraia a estrutura completa deste plano de treino usando a ferramenta extract_training_plan. Preserve ao máximo os valores originais de sets/reps/carga/notas — não invente dado que não está no PDF.',
-            },
-          ],
-        },
-      ],
-    });
+              {
+                type: 'text',
+                text: 'Extraia a estrutura completa deste plano de treino usando a ferramenta extract_training_plan. Preserve ao máximo os valores originais de sets/reps/carga/notas — não invente dado que não está no PDF.',
+              },
+            ],
+          },
+        ],
+      })
+      .finalMessage();
 
-    const toolUse = response.content.find(
+    if (finalMessage.stop_reason === 'max_tokens') {
+      throw new Error(
+        'A extração da IA foi cortada por exceder o limite de tokens — tente um PDF menor ou dividido em partes.',
+      );
+    }
+
+    const toolUse = finalMessage.content.find(
       (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
     );
     if (!toolUse) {

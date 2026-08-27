@@ -14,9 +14,8 @@ import { JwtService } from '@nestjs/jwt';
   cors: {
     origin: [
       'http://localhost:4200',
-      'http://aevonfit.aevon.online',
-      'http://aevonfit.aevon.online:80',
-      'http://aevonfit.bfit.aevon.online',
+      'https://aevonfit.aevon.online',
+      'https://aevonfit.bfit.aevon.online',
     ],
   },
   namespace: '/messages',

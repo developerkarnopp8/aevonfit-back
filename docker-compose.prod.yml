@@ -5,10 +5,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-aevonfit2024}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env — sem valor padrão por segurança}
       POSTGRES_DB: aevonfit
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5438:5432'
 
   api:
     build: .
@@ -17,12 +19,12 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-aevonfit2024}@db:5432/aevonfit
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:?defina DB_PASSWORD no .env}@db:5432/aevonfit
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env — sem valor padrão por segurança}
       JWT_EXPIRES_IN: 7d
       PORT: 3000
     ports:
-      - '3001:3000'
+      - '127.0.0.1:4120:3000'
 
 volumes:
   postgres_data:

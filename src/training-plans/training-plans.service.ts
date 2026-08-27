@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreatePlanDto, UpdatePlanDto,
   CreateWeekDto, CreateDayDto, CreateSessionDto,
@@ -56,7 +57,10 @@ const fullPlanInclude = (athleteId: string) => ({
 
 @Injectable()
 export class TrainingPlansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // ── Autorização ──────────────────────────────────────────────────────────
 
@@ -217,10 +221,19 @@ export class TrainingPlansService {
 
   async publish(id: string, coachId: string) {
     await this.assertCoachOwnsPlan(id, coachId);
-    return this.prisma.trainingPlan.update({
+    const plan = await this.prisma.trainingPlan.update({
       where: { id },
       data: { published: true },
+      include: { student: { select: { userId: true } } },
     });
+    await this.notificationsService.create(
+      plan.student.userId,
+      'plan_published',
+      'Novo plano publicado',
+      `Seu coach publicou "${plan.title}"`,
+      '/athlete/weekly',
+    );
+    return plan;
   }
 
   async remove(id: string, coachId: string) {

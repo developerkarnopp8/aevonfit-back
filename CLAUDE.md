@@ -38,7 +38,14 @@ backend/
 │   ├── students/                # CRUD alunos + GET /students/:id/plan
 │   ├── training-plans/          # CRUD plano + weeks + days + sessions + exercises
 │   ├── sessions/                # GET /sessions/:id (com logs do atleta)
-│   └── workout-logs/            # POST log, GET history, GET session logs
+│   ├── workout-logs/            # POST log, GET history, GET session logs, GET history por aluno (coach)
+│   ├── workout-skips/           # Atleta pula exercício/sessão com justificativa
+│   ├── daily-intake/            # Log de hidratação/calorias do atleta
+│   ├── movements/               # Catálogo de movimentos (global + customizado por coach)
+│   ├── personal-records/        # Registro de PR/1RM do atleta (log-por-evento)
+│   ├── exercise-library/        # Biblioteca de exercícios reutilizáveis do coach
+│   ├── payments/                # Cobranças do coach aos alunos
+│   └── messages/                # Chat coach↔atleta (REST + WebSocket)
 ├── prisma/
 │   ├── schema.prisma            # Modelos: User, Student, TrainingPlan, Week, TrainingDay, Session, Exercise, WorkoutLog
 │   ├── migrations/
@@ -94,10 +101,15 @@ Variáveis obrigatórias:
 | auth | POST /auth/login |
 | users | POST /users, GET /users/me |
 | students | GET /students, GET /students/me, GET /students/:id, GET /students/:id/plan, POST /students, PATCH /students/:id, DELETE /students/:id |
-| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, GET /training-plans/coach/weekly-completion (dashboard, % real de conclusão por dia da semana entre os alunos do coach), POST /training-plans, PATCH /training-plans/:id/publish, POST /training-plans/:id/initialize, + weeks/days/sessions/exercises CRUD |
+| training-plans | GET /training-plans/:id, GET /training-plans/student/:studentId, GET /training-plans/coach/weekly-completion (dashboard, % real de conclusão por dia da semana entre os alunos do coach), POST /training-plans (exige `startDate`, normalizado pro backend pra Segunda-feira da semana), PATCH /training-plans/:id/publish, POST /training-plans/:id/initialize, + weeks/days/sessions/exercises CRUD |
 | sessions | GET /sessions/:id (inclui exercícios + último log do atleta, e workoutSkips filtrado por dono do plano) |
-| workout-logs | POST /workout-logs, GET /workout-logs/history, GET /workout-logs/session/:id, GET /workout-logs/exercise/:id, GET /workout-logs/student/:studentId/history |
+| workout-logs | POST /workout-logs, GET /workout-logs/history, GET /workout-logs/session/:id, GET /workout-logs/exercise/:id, GET /workout-logs/student/:studentId/history (coach dono, via `StudentsService.findOne`) |
 | workout-skips | POST /workout-skips (atleta pula exercício/sessão com motivo, envia mensagem automática pro coach), GET /workout-skips/pending-count (coach, contagem de pulos pendentes por aluno) |
+| daily-intake | POST /daily-intake/hydration, POST /daily-intake/calories, GET /daily-intake/today, GET /daily-intake/student/:studentId/history (coach dono) |
+| movements | GET /movements (catálogo global + customizado do coach do usuário), POST /movements (`@Roles('coach')`) |
+| personal-records | POST /personal-records (`@Roles('athlete')`, exige loadKg e/ou reps), GET /personal-records/me, GET /personal-records/student/:studentId/history (coach dono) |
+| exercise-library | CRUD de exercícios reutilizáveis do coach (GET/POST/PATCH/DELETE) |
+| payments | GET /payments, GET /payments/summary, GET /payments/student/:studentId, POST /payments, PATCH /payments/:id/pay, PATCH /payments/:id, DELETE /payments/:id |
 | messages | GET /messages/inbox, GET /messages/unread, GET /messages/:otherId, POST /messages — WebSocket namespace `/messages` para real-time |
 
 ## Modelo de Dados
@@ -105,12 +117,15 @@ Variáveis obrigatórias:
 ```
 User (coach|athlete)
 └── Student (vinculado a um User atleta + coachId)
-    └── TrainingPlan (mês, publicado?)
-        └── Week (semana 1..N)
-            └── TrainingDay (Terça, Quarta... dayIndex 0-6)
+    └── TrainingPlan (month ordinal + startDate real, normalizado pra Segunda-feira, publicado?)
+        └── Week (semana 1..N — sem data própria, derivada de startDate + weekNumber)
+            └── TrainingDay (Terça, Quarta... dayIndex 1-6, sem data própria)
                 └── Session (Mobilidade, LPO, Força, Metcon... com type enum)
                     └── Exercise (sets, reps, duration, restSeconds, loadPercent, coachNotes)
                         └── WorkoutLog (quando o atleta executa — setsCompleted, notes, completedAt)
+
+Movement (catálogo global ou customizado por coach — coachId opcional)
+└── PersonalRecord (atleta registra PR/1RM — loadKg e/ou reps, log-por-evento)
 ```
 
 ## Decisões Arquiteturais
@@ -135,4 +150,4 @@ User (coach|athlete)
 
 ---
 
-_Última atualização: 2026-08-26 — Módulo workout-skips (pular treino com justificativa) e rota de dashboard GET /training-plans/coach/weekly-completion_
+_Última atualização: 2026-08-26 — sincronizado com o código real: módulos `daily-intake`, `movements`, `personal-records`, `exercise-library`, `payments` estavam implementados mas não documentados aqui (`GET /workout-logs/student/:studentId/history` chegou a ser documentado como existente numa sessão anterior sem nunca ter sido mergeado — causou um 404 real quando outra feature presumiu que o endpoint já existia). `TrainingPlan.startDate` adicionado ao modelo de dados._

@@ -20,8 +20,8 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'http://localhost:3000',
-      'http://aevonfit.aevon.online',
-      'http://aevonfit.bfit.aevon.online',
+      'https://aevonfit.aevon.online',
+      'https://aevonfit.bfit.aevon.online',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

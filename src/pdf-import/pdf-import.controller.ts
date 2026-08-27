@@ -33,7 +33,7 @@ export class PdfImportController {
         .addMaxSizeValidator({ maxSize: MAX_PDF_SIZE_BYTES })
         .build({ errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
     )
-    file: any,
+    file: Express.Multer.File,
   ) {
     return this.service.importFromPdf(req.user.id, dto, file.buffer);
   }

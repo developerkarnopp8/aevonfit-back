@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
 import { MessagesService } from '../messages/messages.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateWorkoutSkipDto } from './dto/create-workout-skip.dto';
 
 type AuthUser = { id: string; role: string };
@@ -19,6 +20,7 @@ export class WorkoutSkipsService {
     private prisma: PrismaService,
     private studentsService: StudentsService,
     private messagesService: MessagesService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateWorkoutSkipDto, user: AuthUser) {
@@ -47,6 +49,13 @@ export class WorkoutSkipsService {
     const decisionLabel = dto.decision === 'Postponed' ? 'vai fazer depois' : 'não vai fazer';
     const content = `Pulei "${target.name}" — motivo: ${reasonLabel}. ${decisionLabel}.${dto.note ? ` Nota: ${dto.note}` : ''}`;
     await this.messagesService.send(user.id, student.coachId, content, true);
+    await this.notificationsService.create(
+      student.coachId,
+      'workout_skipped',
+      'Aluno pulou um treino',
+      content,
+      `/coach/plan-builder/${target.studentId}`,
+    );
 
     return skip;
   }

@@ -57,6 +57,14 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
+  /** Emite uma notificação em tempo real para o destinatário — mesmo canal usado pras mensagens. */
+  emitNotification(userId: string, notification: object): void {
+    const socketId = this.userSockets.get(userId);
+    if (socketId) {
+      this.server.to(socketId).emit('new_notification', notification);
+    }
+  }
+
   @SubscribeMessage('ping')
   handlePing(@ConnectedSocket() client: Socket): void {
     client.emit('pong');

@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TrainingPlansService } from './training-plans.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * Cobre o achado 1 da revisão final: `fullPlanInclude` precisa filtrar
@@ -44,7 +45,11 @@ describe('TrainingPlansService — filtro por athleteId em fullPlanInclude', () 
     };
 
     const module = await Test.createTestingModule({
-      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        TrainingPlansService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get(TrainingPlansService);
@@ -110,7 +115,11 @@ describe('TrainingPlansService.getWeeklyCompletionByDayIndex', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        TrainingPlansService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get(TrainingPlansService);
@@ -221,7 +230,11 @@ describe('TrainingPlansService.create — normalização de startDate', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        TrainingPlansService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get(TrainingPlansService);
@@ -275,7 +288,11 @@ describe('TrainingPlansService.create — checagem de dono do aluno', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [TrainingPlansService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        TrainingPlansService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get(TrainingPlansService);
@@ -302,5 +319,47 @@ describe('TrainingPlansService.create — checagem de dono do aluno', () => {
     ).rejects.toThrow(ForbiddenException);
 
     expect(prisma.__tx.trainingPlan.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('TrainingPlansService.publish — notifica o atleta', () => {
+  let service: TrainingPlansService;
+  let prisma: any;
+  let notificationsService: { create: jest.Mock };
+
+  beforeEach(async () => {
+    prisma = {
+      trainingPlan: {
+        findUnique: jest.fn().mockResolvedValue({ coachId: 'coach-1' }),
+        update: jest.fn().mockResolvedValue({
+          id: 'plan-1',
+          title: 'Mesociclo 1',
+          student: { userId: 'athlete-1' },
+        }),
+      },
+    };
+    notificationsService = { create: jest.fn() };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        TrainingPlansService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: notificationsService },
+      ],
+    }).compile();
+
+    service = module.get(TrainingPlansService);
+  });
+
+  it('notifica o atleta dono do plano quando o coach publica', async () => {
+    await service.publish('plan-1', 'coach-1');
+
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      'athlete-1',
+      'plan_published',
+      'Novo plano publicado',
+      'Seu coach publicou "Mesociclo 1"',
+      '/athlete/weekly',
+    );
   });
 });

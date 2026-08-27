@@ -4,44 +4,53 @@ import { PersonalRecordsService } from './personal-records.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
 import { MovementsService } from '../movements/movements.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('PersonalRecordsService.create', () => {
   let service: PersonalRecordsService;
   let prisma: any;
   let movementsService: { isAvailableForUser: jest.Mock };
+  let notificationsService: { create: jest.Mock };
 
   beforeEach(async () => {
-    prisma = { personalRecord: { create: jest.fn() } };
+    prisma = {
+      personalRecord: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+      student: { findFirst: jest.fn() },
+    };
     movementsService = { isAvailableForUser: jest.fn().mockResolvedValue(true) };
+    notificationsService = { create: jest.fn() };
     const module = await Test.createTestingModule({
       providers: [
         PersonalRecordsService,
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: { findOne: jest.fn() } },
         { provide: MovementsService, useValue: movementsService },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);
   });
 
   it('cria o registro com loadKg', async () => {
-    prisma.personalRecord.create.mockResolvedValue({ id: 'pr1' });
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr1', movement: { name: 'Back Squat' } });
 
     await service.create('athlete-1', { movementId: 'mov-1', loadKg: 120 } as any);
 
     expect(movementsService.isAvailableForUser).toHaveBeenCalledWith({ id: 'athlete-1', role: 'athlete' }, 'mov-1');
     expect(prisma.personalRecord.create).toHaveBeenCalledWith({
       data: { athleteId: 'athlete-1', movementId: 'mov-1', loadKg: 120, reps: undefined, note: undefined },
+      include: { movement: true },
     });
   });
 
   it('cria o registro so com reps (movimento de corpo livre)', async () => {
-    prisma.personalRecord.create.mockResolvedValue({ id: 'pr2' });
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr2', movement: { name: 'Pull-up' } });
 
     await service.create('athlete-1', { movementId: 'mov-2', reps: 15 } as any);
 
     expect(prisma.personalRecord.create).toHaveBeenCalledWith({
       data: { athleteId: 'athlete-1', movementId: 'mov-2', loadKg: undefined, reps: 15, note: undefined },
+      include: { movement: true },
     });
   });
 
@@ -62,6 +71,47 @@ describe('PersonalRecordsService.create', () => {
 
     expect(prisma.personalRecord.create).not.toHaveBeenCalled();
   });
+
+  it('notifica o coach no primeiro registro daquele movimento (sempre é recorde)', async () => {
+    prisma.personalRecord.findMany.mockResolvedValue([]);
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr1', movement: { name: 'Back Squat' } });
+    prisma.student.findFirst.mockResolvedValue({ id: 'student-1', coachId: 'coach-1' });
+
+    await service.create('athlete-1', { movementId: 'mov-1', loadKg: 100 } as any);
+
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      'coach-1',
+      'new_pr',
+      'Novo recorde pessoal!',
+      expect.stringContaining('Back Squat'),
+      '/coach/plan-builder/student-1',
+    );
+  });
+
+  it('nao notifica quando o novo valor NAO supera o recorde ja existente', async () => {
+    prisma.personalRecord.findMany.mockResolvedValue([{ loadKg: 120, reps: null }]);
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr2', movement: { name: 'Back Squat' } });
+
+    await service.create('athlete-1', { movementId: 'mov-1', loadKg: 100 } as any);
+
+    expect(notificationsService.create).not.toHaveBeenCalled();
+  });
+
+  it('notifica so por carga quando so a carga bate recorde (reps nao informado)', async () => {
+    prisma.personalRecord.findMany.mockResolvedValue([{ loadKg: 90, reps: null }]);
+    prisma.personalRecord.create.mockResolvedValue({ id: 'pr3', movement: { name: 'Back Squat' } });
+    prisma.student.findFirst.mockResolvedValue({ id: 'student-1', coachId: 'coach-1' });
+
+    await service.create('athlete-1', { movementId: 'mov-1', loadKg: 100 } as any);
+
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      'coach-1',
+      'new_pr',
+      'Novo recorde pessoal!',
+      expect.stringContaining('carga'),
+      '/coach/plan-builder/student-1',
+    );
+  });
 });
 
 describe('PersonalRecordsService.getMyHistory', () => {
@@ -76,6 +126,7 @@ describe('PersonalRecordsService.getMyHistory', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: { findOne: jest.fn() } },
         { provide: MovementsService, useValue: { isAvailableForUser: jest.fn() } },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);
@@ -109,6 +160,7 @@ describe('PersonalRecordsService.getHistoryForStudent', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: StudentsService, useValue: studentsService },
         { provide: MovementsService, useValue: { isAvailableForUser: jest.fn() } },
+        { provide: NotificationsService, useValue: { create: jest.fn() } },
       ],
     }).compile();
     service = module.get(PersonalRecordsService);

@@ -16,7 +16,7 @@ export class WorkoutLogsController {
   @Post()
   @ApiOperation({ summary: 'Registra conclusão de um exercício pelo atleta' })
   logExercise(@Request() req: any, @Body() dto: CreateWorkoutLogDto) {
-    return this.workoutLogsService.logExercise(req.user.id, dto);
+    return this.workoutLogsService.logExercise(req.user, dto);
   }
 
   @Get('history')

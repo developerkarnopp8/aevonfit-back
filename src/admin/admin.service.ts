@@ -47,6 +47,9 @@ export class AdminService {
   }
 
   async toggleCoachAi(id: string, aiImportEnabled: boolean): Promise<{ id: string; aiImportEnabled: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { role: true } });
+    if (!user || user.role !== 'coach') throw new NotFoundException('Coach não encontrado');
+
     return this.prisma.user.update({
       where: { id },
       data: { aiImportEnabled },

@@ -93,4 +93,18 @@ describe('AdminService', () => {
     });
     expect(result).toEqual({ id: 'coach-1', aiImportEnabled: false });
   });
+
+  it('lança NotFoundException ao ligar/desligar IA de coach que não existe', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await expect(service.toggleCoachAi('inexistente', true)).rejects.toThrow(NotFoundException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('lança NotFoundException ao ligar/desligar IA de usuário que não é coach', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'athlete-1', role: 'athlete' });
+
+    await expect(service.toggleCoachAi('athlete-1', true)).rejects.toThrow(NotFoundException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
 });

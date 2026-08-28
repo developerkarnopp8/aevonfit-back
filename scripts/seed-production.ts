@@ -9,13 +9,9 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import { generateStrongPassword } from '../src/common/generate-strong-password';
 
 const prisma = new PrismaClient();
-
-function generateStrongPassword(): string {
-  return crypto.randomBytes(18).toString('base64url');
-}
 
 async function main() {
   const existing = await prisma.user.findFirst({

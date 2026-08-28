@@ -1,13 +1,15 @@
 import { Test } from '@nestjs/testing';
-import { BadGatewayException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { PdfImportService } from './pdf-import.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicExtractionService } from './anthropic-extraction.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('PdfImportService', () => {
   let service: PdfImportService;
   let prisma: any;
   let extraction: { extract: jest.Mock };
+  let notifications: { create: jest.Mock };
 
   const coachId = 'coach-1';
   const dto = { studentId: 'student-1', startDate: '2026-09-01' };
@@ -39,18 +41,22 @@ describe('PdfImportService', () => {
   beforeEach(async () => {
     prisma = {
       student: { findUnique: jest.fn().mockResolvedValue({ userId: 'athlete-1', coachId }) },
+      user: { findUnique: jest.fn().mockResolvedValue({ aiImportEnabled: true }) },
+      notification: { findFirst: jest.fn().mockResolvedValue(null) },
       trainingPlan: {
         create: jest.fn().mockResolvedValue({ id: 'plan-1' }),
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
     extraction = { extract: jest.fn().mockResolvedValue(validExtraction) };
+    notifications = { create: jest.fn().mockResolvedValue({}) };
 
     const module = await Test.createTestingModule({
       providers: [
         PdfImportService,
         { provide: PrismaService, useValue: prisma },
         { provide: AnthropicExtractionService, useValue: extraction },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get(PdfImportService);
@@ -99,10 +105,58 @@ describe('PdfImportService', () => {
     expect(prisma.trainingPlan.create).not.toHaveBeenCalled();
   });
 
-  it('converte erro da chamada à IA em BadGatewayException (502), sem criar nada', async () => {
+  it('converte erro genérico da IA em ServiceUnavailableException (503), sem notificar admin', async () => {
     extraction.extract.mockRejectedValue(new Error('network error'));
 
-    await expect(service.importFromPdf(coachId, dto, pdfBuffer)).rejects.toThrow(BadGatewayException);
+    await expect(service.importFromPdf(coachId, dto, pdfBuffer)).rejects.toThrow(ServiceUnavailableException);
     expect(prisma.trainingPlan.create).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('lança ForbiddenException se aiImportEnabled do coach está desligado, sem chamar a IA', async () => {
+    prisma.user.findUnique.mockResolvedValue({ aiImportEnabled: false });
+
+    await expect(service.importFromPdf(coachId, dto, pdfBuffer)).rejects.toThrow(ForbiddenException);
+    expect(extraction.extract).not.toHaveBeenCalled();
+  });
+
+  it('notifica todos os admins quando o erro é de crédito esgotado da Anthropic', async () => {
+    const Anthropic = require('@anthropic-ai/sdk').default;
+    const creditError = new Anthropic.BadRequestError(
+      400,
+      { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } },
+      'Your credit balance is too low to access the Anthropic API.',
+      new Headers(),
+    );
+    extraction.extract.mockRejectedValue(creditError);
+    prisma.user.findMany = jest.fn().mockResolvedValue([{ id: 'admin-1' }, { id: 'admin-2' }]);
+
+    await expect(service.importFromPdf(coachId, dto, pdfBuffer)).rejects.toThrow(ServiceUnavailableException);
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: { role: 'admin' }, select: { id: true } });
+    expect(notifications.create).toHaveBeenCalledTimes(2);
+    expect(notifications.create).toHaveBeenCalledWith(
+      'admin-1', 'ai_credit_exhausted', expect.any(String), expect.any(String), expect.any(String),
+    );
+    expect(notifications.create).toHaveBeenCalledWith(
+      'admin-2', 'ai_credit_exhausted', expect.any(String), expect.any(String), expect.any(String),
+    );
+  });
+
+  it('não duplica notificação de crédito esgotado se já existe uma não-lida pro mesmo admin', async () => {
+    const Anthropic = require('@anthropic-ai/sdk').default;
+    const creditError = new Anthropic.BadRequestError(
+      400,
+      { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low.' } },
+      'Your credit balance is too low.',
+      new Headers(),
+    );
+    extraction.extract.mockRejectedValue(creditError);
+    prisma.user.findMany = jest.fn().mockResolvedValue([{ id: 'admin-1' }]);
+    prisma.notification.findFirst.mockResolvedValue({ id: 'ja-existe' });
+
+    await expect(service.importFromPdf(coachId, dto, pdfBuffer)).rejects.toThrow(ServiceUnavailableException);
+
+    expect(notifications.create).not.toHaveBeenCalled();
   });
 });

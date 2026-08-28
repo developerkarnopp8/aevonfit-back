@@ -33,4 +33,15 @@ export class WorkoutSessionsController {
   studentSummary(@Param('studentId') studentId: string, @Request() req: any) {
     return this.service.studentSummary(studentId, req.user);
   }
+
+  @Roles('coach')
+  @Get('student/:studentId/session/:sessionId')
+  @ApiOperation({ summary: 'Tempo por exercício + última execução de uma sessão (coach dono)' })
+  sessionDetail(
+    @Param('studentId') studentId: string,
+    @Param('sessionId') sessionId: string,
+    @Request() req: any,
+  ) {
+    return this.service.sessionDetail(studentId, sessionId, req.user);
+  }
 }

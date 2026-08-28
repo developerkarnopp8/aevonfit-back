@@ -226,3 +226,79 @@ describe('WorkoutSessionsService.studentSummary', () => {
     });
   });
 });
+
+describe('WorkoutSessionsService.sessionDetail', () => {
+  let service: WorkoutSessionsService;
+  let prisma: any;
+  let studentsService: { findOne: jest.Mock };
+  const coachUser = { id: 'coach-1', role: 'coach' };
+
+  beforeEach(async () => {
+    prisma = {
+      session: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'session-1', name: 'Segunda A',
+          exercises: [
+            { id: 'ex-1', name: 'Back Squat', workoutLogs: [{ durationSeconds: 75 }] },
+            { id: 'ex-2', name: 'Snatch', workoutLogs: [] },
+          ],
+        }),
+      },
+      workoutSession: {
+        findMany: jest.fn().mockResolvedValue([
+          { startedAt: new Date('2026-08-28T10:00:00Z'), finishedAt: new Date('2026-08-28T10:40:00Z'),
+            elapsedSeconds: 2400, activeSeconds: 1500, status: 'Partial' },
+        ]),
+      },
+    };
+    studentsService = { findOne: jest.fn().mockResolvedValue({ id: 'student-1', userId: 'athlete-1', coachId: 'coach-1' }) };
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkoutSessionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: studentsService },
+      ],
+    }).compile();
+    service = module.get(WorkoutSessionsService);
+  });
+
+  it('checa posse antes de consultar', async () => {
+    studentsService.findOne.mockRejectedValue(new ForbiddenException());
+    await expect(service.sessionDetail('student-1', 'session-1', coachUser)).rejects.toThrow(ForbiddenException);
+    expect(prisma.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('retorna tempo por exercício (último log do aluno) e a última execução', async () => {
+    const result = await service.sessionDetail('student-1', 'session-1', coachUser);
+    expect(result).toEqual({
+      sessionId: 'session-1',
+      sessionName: 'Segunda A',
+      exercises: [
+        { id: 'ex-1', name: 'Back Squat', durationSeconds: 75, completed: true },
+        { id: 'ex-2', name: 'Snatch', durationSeconds: null, completed: false },
+      ],
+      lastExecution: {
+        startedAt: new Date('2026-08-28T10:00:00Z'), finishedAt: new Date('2026-08-28T10:40:00Z'),
+        elapsedSeconds: 2400, activeSeconds: 1500, status: 'Partial',
+      },
+      executionCount: 1,
+    });
+    expect(prisma.session.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'session-1' },
+        include: expect.objectContaining({
+          exercises: expect.objectContaining({
+            include: { workoutLogs: expect.objectContaining({ where: { athleteId: 'athlete-1' } }) },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('lastExecution null quando o aluno nunca executou', async () => {
+    prisma.workoutSession.findMany.mockResolvedValue([]);
+    const result = await service.sessionDetail('student-1', 'session-1', coachUser);
+    expect(result.lastExecution).toBeNull();
+    expect(result.executionCount).toBe(0);
+  });
+});

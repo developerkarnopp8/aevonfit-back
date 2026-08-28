@@ -134,4 +134,47 @@ export class WorkoutSessionsService {
       perExercise,
     };
   }
+
+  /** Detalhe de tempo por exercício + última execução de uma sessão (coach dono). */
+  async sessionDetail(studentId: string, sessionId: string, user: AuthUser) {
+    const student = await this.studentsService.findOne(studentId, user);
+    const athleteId = student.userId;
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        exercises: {
+          orderBy: { order: 'asc' },
+          include: {
+            workoutLogs: {
+              where: { athleteId },
+              orderBy: { completedAt: 'desc' },
+              take: 1,
+              select: { durationSeconds: true },
+            },
+          },
+        },
+      },
+    });
+    if (!session) throw new BadRequestException('Sessão não encontrada');
+
+    const executions = await this.prisma.workoutSession.findMany({
+      where: { sessionId, athleteId },
+      orderBy: { startedAt: 'desc' },
+      select: { startedAt: true, finishedAt: true, elapsedSeconds: true, activeSeconds: true, status: true },
+    });
+
+    return {
+      sessionId: session.id,
+      sessionName: session.name,
+      exercises: session.exercises.map(e => ({
+        id: e.id,
+        name: e.name,
+        durationSeconds: e.workoutLogs[0]?.durationSeconds ?? null,
+        completed: e.workoutLogs.length > 0,
+      })),
+      lastExecution: executions[0] ?? null,
+      executionCount: executions.length,
+    };
+  }
 }

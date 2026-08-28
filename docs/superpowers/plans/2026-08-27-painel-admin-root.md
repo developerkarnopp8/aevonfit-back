@@ -1275,12 +1275,14 @@ git commit -m "feat(admin): terceiro toggle Admin na tela de login"
 - Consumes: `adminGuard` (Task 7)
 - Produces: rota `/admin/coaches` (componente carregado pela Task 10)
 
-- [ ] **Step 1: Criar o componente de shell (skeleton mínimo, mesmo padrão visual do `CoachShellComponent` simplificado — sem modal de plano, sem sino de PDF)**
+- [ ] **Step 1: Criar o componente de shell — sidebar desktop + menu gaveta (drawer) mobile via hambúrguer**
+
+**Nota de alinhamento**: o padrão de navegação mobile do painel do coach (brainstorming em andamento na mesma sessão, ainda sem spec escrita) já foi decidido como menu gaveta via hambúrguer — o `AdminShellComponent` nasce direto com esse padrão em vez de repetir o `hidden md:flex` sem alternativa que quebrou o painel do coach no mobile. Estrutura: sidebar fixa em desktop (`md:flex`, como antes) + header fixo só mobile (`md:hidden`, com hambúrguer) + drawer deslizante (mesmo conteúdo de nav da sidebar) controlado por um signal.
 
 Criar `src/app/layout/admin-shell/admin-shell.component.ts`:
 
 ```ts
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -1294,7 +1296,17 @@ import { NotificationsBellComponent } from '../../shared/components/notification
   styleUrl: './admin-shell.component.scss',
 })
 export class AdminShellComponent {
+  mobileMenuOpen = signal(false);
+
   constructor(public auth: AuthService) {}
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen.update(v => !v);
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
+  }
 
   logout(): void {
     this.auth.logout();
@@ -1309,7 +1321,7 @@ Criar `src/app/layout/admin-shell/admin-shell.component.html`:
 ```html
 <div class="flex min-h-screen bg-background">
 
-  <!-- Sidebar -->
+  <!-- Sidebar (desktop, ≥768px) -->
   <aside class="hidden md:flex w-64 h-screen flex-shrink-0 border-r border-outline-variant/10 bg-background flex-col py-8">
     <div class="px-6 mb-8 flex items-start justify-between">
       <div>
@@ -1336,8 +1348,47 @@ Criar `src/app/layout/admin-shell/admin-shell.component.html`:
     </div>
   </aside>
 
+  <!-- Header fixo (mobile, <768px) -->
+  <header class="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-background border-b border-outline-variant/10">
+    <button type="button" (click)="toggleMobileMenu()"
+      class="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
+      <span class="material-symbols-outlined text-[24px]">menu</span>
+    </button>
+    <h1 class="text-base font-bold text-on-surface font-headline">Admin <span class="text-primary-fixed">PulseRx</span></h1>
+    <app-notifications-bell />
+  </header>
+
+  <!-- Drawer (mobile, <768px) -->
+  @if (mobileMenuOpen()) {
+    <div class="md:hidden fixed inset-0 z-50 flex animate-fade-in">
+      <div class="absolute inset-0 bg-black/80" (click)="closeMobileMenu()"></div>
+      <div class="relative w-64 h-full bg-background border-r border-outline-variant/10 flex flex-col py-8 animate-slide-up">
+        <div class="px-6 mb-8">
+          <h1 class="text-xl font-bold text-on-surface font-headline">Admin</h1>
+          <p class="text-[10px] text-primary-fixed tracking-widest uppercase font-headline mt-0.5">PulseRx</p>
+        </div>
+
+        <nav class="flex-1 px-4 flex flex-col gap-1">
+          <a routerLink="/admin/coaches" (click)="closeMobileMenu()"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-headline text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[20px]">group</span>
+            Coaches
+          </a>
+        </nav>
+
+        <div class="px-4 mt-auto">
+          <button type="button" (click)="logout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-headline text-on-surface-variant hover:text-error transition-colors">
+            <span class="material-symbols-outlined text-[20px]">logout</span>
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Content -->
-  <main class="flex-1 overflow-y-auto">
+  <main class="flex-1 overflow-y-auto pt-16 md:pt-0">
     <router-outlet />
   </main>
 

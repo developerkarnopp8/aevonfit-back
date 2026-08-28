@@ -143,3 +143,86 @@ describe('WorkoutSessionsService.listMine', () => {
     });
   });
 });
+
+describe('WorkoutSessionsService.studentSummary', () => {
+  let service: WorkoutSessionsService;
+  let prisma: any;
+  let studentsService: { findOne: jest.Mock };
+  const coachUser = { id: 'coach-1', role: 'coach' };
+
+  beforeEach(async () => {
+    prisma = {
+      workoutSession: {
+        findMany: jest.fn().mockResolvedValue([
+          { elapsedSeconds: 3000, startedAt: new Date('2026-08-28T00:00:00Z') },
+          { elapsedSeconds: 3200, startedAt: new Date('2026-08-27T00:00:00Z') },
+          { elapsedSeconds: 3100, startedAt: new Date('2026-08-26T00:00:00Z') },
+          { elapsedSeconds: 3600, startedAt: new Date('2026-08-25T00:00:00Z') },
+          { elapsedSeconds: 3800, startedAt: new Date('2026-08-24T00:00:00Z') },
+          { elapsedSeconds: 4000, startedAt: new Date('2026-08-23T00:00:00Z') },
+        ]),
+      },
+      workoutLog: {
+        findMany: jest.fn().mockResolvedValue([
+          { durationSeconds: 60, exercise: { name: 'Back Squat' } },
+          { durationSeconds: 80, exercise: { name: 'Back Squat' } },
+          { durationSeconds: 40, exercise: { name: 'Snatch' } },
+        ]),
+      },
+    };
+    studentsService = { findOne: jest.fn().mockResolvedValue({ id: 'student-1', userId: 'athlete-1', coachId: 'coach-1' }) };
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkoutSessionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: studentsService },
+      ],
+    }).compile();
+    service = module.get(WorkoutSessionsService);
+  });
+
+  it('checa posse antes de consultar', async () => {
+    studentsService.findOne.mockRejectedValue(new ForbiddenException());
+    await expect(service.studentSummary('student-1', coachUser)).rejects.toThrow(ForbiddenException);
+    expect(prisma.workoutSession.findMany).not.toHaveBeenCalled();
+  });
+
+  it('consulta pelas sessões do userId do aluno', async () => {
+    await service.studentSummary('student-1', coachUser);
+    expect(prisma.workoutSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { athleteId: 'athlete-1' } }),
+    );
+  });
+
+  it('calcula média, tendência (últimas 3 vs 3 anteriores) e tempo médio por exercício', async () => {
+    const result = await service.studentSummary('student-1', coachUser);
+
+    expect(result.count).toBe(6);
+    expect(result.avgElapsedSeconds).toBe(3450); // média das 6
+    // últimas 3 (3000,3200,3100 → 3100) vs 3 anteriores (3600,3800,4000 → 3800)
+    expect(result.trend).toEqual({ direction: 'faster', deltaSeconds: -700 });
+    expect(result.perExercise).toEqual([
+      { exerciseName: 'Back Squat', avgSeconds: 70, samples: 2 },
+      { exerciseName: 'Snatch', avgSeconds: 40, samples: 1 },
+    ]);
+  });
+
+  it('retorna trend new quando há menos de 6 sessões', async () => {
+    prisma.workoutSession.findMany.mockResolvedValue([
+      { elapsedSeconds: 3000, startedAt: new Date() },
+      { elapsedSeconds: 3200, startedAt: new Date() },
+    ]);
+    const result = await service.studentSummary('student-1', coachUser);
+    expect(result.trend.direction).toBe('new');
+  });
+
+  it('retorna zerado quando não há sessão nenhuma', async () => {
+    prisma.workoutSession.findMany.mockResolvedValue([]);
+    prisma.workoutLog.findMany.mockResolvedValue([]);
+    const result = await service.studentSummary('student-1', coachUser);
+    expect(result).toEqual({
+      count: 0, avgElapsedSeconds: 0,
+      trend: { direction: 'new', deltaSeconds: 0 }, perExercise: [],
+    });
+  });
+});

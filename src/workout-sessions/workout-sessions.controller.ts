@@ -26,4 +26,11 @@ export class WorkoutSessionsController {
   listMine(@Request() req: any) {
     return this.service.listMine(req.user.id);
   }
+
+  @Roles('coach')
+  @Get('student/:studentId/summary')
+  @ApiOperation({ summary: 'Resumo de tempo de execução de um aluno (coach dono)' })
+  studentSummary(@Param('studentId') studentId: string, @Request() req: any) {
+    return this.service.studentSummary(studentId, req.user);
+  }
 }

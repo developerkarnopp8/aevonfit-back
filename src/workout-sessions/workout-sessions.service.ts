@@ -81,4 +81,57 @@ export class WorkoutSessionsService {
       status: r.status,
     }));
   }
+
+  private mean(nums: number[]): number {
+    return nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 0;
+  }
+
+  /** Resumo de tempo de execução de um aluno (coach dono). */
+  async studentSummary(studentId: string, user: AuthUser) {
+    const student = await this.studentsService.findOne(studentId, user);
+    const athleteId = student.userId;
+
+    const sessions = await this.prisma.workoutSession.findMany({
+      where: { athleteId },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+      select: { elapsedSeconds: true, startedAt: true },
+    });
+
+    const durations = sessions.map(s => s.elapsedSeconds);
+    let trend: { direction: 'faster' | 'slower' | 'equal' | 'new'; deltaSeconds: number } = {
+      direction: 'new', deltaSeconds: 0,
+    };
+    if (durations.length >= 6) {
+      const recent = this.mean(durations.slice(0, 3));
+      const previous = this.mean(durations.slice(3, 6));
+      const delta = recent - previous;
+      trend = {
+        direction: delta < 0 ? 'faster' : delta > 0 ? 'slower' : 'equal',
+        deltaSeconds: delta,
+      };
+    }
+
+    const logs = await this.prisma.workoutLog.findMany({
+      where: { athleteId, durationSeconds: { not: null } },
+      select: { durationSeconds: true, exercise: { select: { name: true } } },
+    });
+    const byName = new Map<string, number[]>();
+    for (const l of logs) {
+      const arr = byName.get(l.exercise.name) ?? [];
+      arr.push(l.durationSeconds as number);
+      byName.set(l.exercise.name, arr);
+    }
+    const perExercise = Array.from(byName.entries())
+      .map(([exerciseName, vals]) => ({ exerciseName, avgSeconds: this.mean(vals), samples: vals.length }))
+      .sort((a, b) => b.samples - a.samples || a.exerciseName.localeCompare(b.exerciseName))
+      .slice(0, 10);
+
+    return {
+      count: sessions.length,
+      avgElapsedSeconds: this.mean(durations),
+      trend,
+      perExercise,
+    };
+  }
 }

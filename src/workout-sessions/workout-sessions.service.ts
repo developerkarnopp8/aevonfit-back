@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
 import { CheckoutWorkoutSessionDto } from './dto/checkout-workout-session.dto';
@@ -33,7 +33,11 @@ export class WorkoutSessionsService {
     await this.studentsService.findOne(studentId, user); // ownership: 403 se não for dono/self
 
     const logs = await this.prisma.workoutLog.findMany({
-      where: { athleteId: user.id, exercise: { sessionId: dto.sessionId } },
+      where: {
+        athleteId: user.id,
+        exercise: { sessionId: dto.sessionId },
+        completedAt: { gte: started }, // só os logs desta execução (janela a partir do startedAt)
+      },
       select: { exerciseId: true, durationSeconds: true },
     });
 
@@ -43,10 +47,12 @@ export class WorkoutSessionsService {
       session.exercises.length > 0 &&
       session.exercises.every(e => loggedExerciseIds.has(e.id));
 
-    const elapsedSeconds = Math.max(
-      0,
-      Math.round((finished.getTime() - started.getTime()) / 1000),
-    );
+    const MAX_SESSION_SECONDS = 12 * 60 * 60; // 12h — teto plausível de uma sessão
+    const rawElapsed = Math.round((finished.getTime() - started.getTime()) / 1000);
+    if (!Number.isFinite(rawElapsed) || rawElapsed > MAX_SESSION_SECONDS) {
+      throw new BadRequestException('Duração de sessão inválida');
+    }
+    const elapsedSeconds = Math.max(0, rawElapsed);
 
     return this.prisma.workoutSession.create({
       data: {
@@ -91,10 +97,12 @@ export class WorkoutSessionsService {
     const student = await this.studentsService.findOne(studentId, user);
     const athleteId = student.userId;
 
+    const SUMMARY_SAMPLE_SIZE = 20; // amostra das últimas execuções, não o total histórico
+
     const sessions = await this.prisma.workoutSession.findMany({
       where: { athleteId },
       orderBy: { startedAt: 'desc' },
-      take: 20,
+      take: SUMMARY_SAMPLE_SIZE,
       select: { elapsedSeconds: true, startedAt: true },
     });
 
@@ -128,6 +136,7 @@ export class WorkoutSessionsService {
       .slice(0, 10);
 
     return {
+      // count = amostra das últimas 20 execuções, não o total
       count: sessions.length,
       avgElapsedSeconds: this.mean(durations),
       trend,
@@ -140,8 +149,8 @@ export class WorkoutSessionsService {
     const student = await this.studentsService.findOne(studentId, user);
     const athleteId = student.userId;
 
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, day: { week: { plan: { studentId } } } },
       include: {
         exercises: {
           orderBy: { order: 'asc' },
@@ -156,7 +165,7 @@ export class WorkoutSessionsService {
         },
       },
     });
-    if (!session) throw new BadRequestException('Sessão não encontrada');
+    if (!session) throw new NotFoundException('Sessão não encontrada para este aluno');
 
     const executions = await this.prisma.workoutSession.findMany({
       where: { sessionId, athleteId },

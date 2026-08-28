@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { WorkoutSessionsService } from './workout-sessions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentsService } from '../students/students.service';
@@ -98,6 +98,38 @@ describe('WorkoutSessionsService.checkout', () => {
   it('lança BadRequestException quando a sessão não existe', async () => {
     prisma.session.findUnique.mockResolvedValue(null);
     await expect(service.checkout(athleteUser, dto)).rejects.toThrow(BadRequestException);
+  });
+
+  it('só conta os logs a partir do startedAt desta execução (janela)', async () => {
+    await service.checkout(athleteUser, dto);
+    expect(prisma.workoutLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          athleteId: 'athlete-1',
+          exercise: { sessionId: 'session-1' },
+          completedAt: { gte: new Date('2026-08-28T10:00:00.000Z') },
+        }),
+      }),
+    );
+  });
+
+  it('rejeita duração de sessão absurda (20 anos) sem gravar nada', async () => {
+    await expect(
+      service.checkout(athleteUser, {
+        ...dto,
+        startedAt: '2006-08-28T10:00:00.000Z',
+        finishedAt: '2026-08-28T10:45:00.000Z',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.workoutSession.create).not.toHaveBeenCalled();
+  });
+
+  it('aceita uma sessão normal de ~45min (regressão)', async () => {
+    const result = await service.checkout(athleteUser, dto);
+    expect(result).toBeDefined();
+    expect(prisma.workoutSession.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ elapsedSeconds: 2700 }) }),
+    );
   });
 });
 
@@ -236,7 +268,7 @@ describe('WorkoutSessionsService.sessionDetail', () => {
   beforeEach(async () => {
     prisma = {
       session: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 'session-1', name: 'Segunda A',
           exercises: [
             { id: 'ex-1', name: 'Back Squat', workoutLogs: [{ durationSeconds: 75 }] },
@@ -265,7 +297,13 @@ describe('WorkoutSessionsService.sessionDetail', () => {
   it('checa posse antes de consultar', async () => {
     studentsService.findOne.mockRejectedValue(new ForbiddenException());
     await expect(service.sessionDetail('student-1', 'session-1', coachUser)).rejects.toThrow(ForbiddenException);
-    expect(prisma.session.findUnique).not.toHaveBeenCalled();
+    expect(prisma.session.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('lança NotFoundException quando a sessão é de outro aluno, sem consultar execuções', async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+    await expect(service.sessionDetail('student-1', 'session-1', coachUser)).rejects.toThrow(NotFoundException);
+    expect(prisma.workoutSession.findMany).not.toHaveBeenCalled();
   });
 
   it('retorna tempo por exercício (último log do aluno) e a última execução', async () => {
@@ -283,9 +321,9 @@ describe('WorkoutSessionsService.sessionDetail', () => {
       },
       executionCount: 1,
     });
-    expect(prisma.session.findUnique).toHaveBeenCalledWith(
+    expect(prisma.session.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'session-1' },
+        where: { id: 'session-1', day: { week: { plan: { studentId: 'student-1' } } } },
         include: expect.objectContaining({
           exercises: expect.objectContaining({
             include: { workoutLogs: expect.objectContaining({ where: { athleteId: 'athlete-1' } }) },

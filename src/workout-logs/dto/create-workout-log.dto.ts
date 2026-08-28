@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsInt, Min, Max, IsOptional, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateWorkoutLogDto {
@@ -9,6 +9,13 @@ export class CreateWorkoutLogDto {
   @ApiProperty({ example: 3, description: 'Séries realizadas' })
   @IsNumber()
   setsCompleted: number;
+
+  @ApiPropertyOptional({ example: 95, description: 'Tempo de execução real do exercício em segundos' })
+  @IsInt()
+  @Min(0)
+  @Max(43200) // 12h em segundos — teto plausível de um único exercício
+  @IsOptional()
+  durationSeconds?: number;
 
   @ApiPropertyOptional({ example: 'Aumentei 5kg na última série' })
   @IsString()

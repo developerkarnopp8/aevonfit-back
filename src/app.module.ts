@@ -9,6 +9,7 @@ import { StudentsModule } from './students/students.module';
 import { TrainingPlansModule } from './training-plans/training-plans.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { WorkoutLogsModule } from './workout-logs/workout-logs.module';
+import { WorkoutSessionsModule } from './workout-sessions/workout-sessions.module';
 import { ExerciseLibraryModule } from './exercise-library/exercise-library.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MessagesModule } from './messages/messages.module';
@@ -39,6 +40,7 @@ import { AdminModule } from './admin/admin.module';
     TrainingPlansModule,
     SessionsModule,
     WorkoutLogsModule,
+    WorkoutSessionsModule,
     ExerciseLibraryModule,
     PaymentsModule,
     MessagesModule,

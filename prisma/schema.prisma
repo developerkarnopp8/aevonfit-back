@@ -57,6 +57,7 @@ model User {
   movements        Movement[]
   personalRecords  PersonalRecord[]
   notifications    Notification[]
+  workoutSessions  WorkoutSession[]
 
   @@map("users")
 }
@@ -142,6 +143,7 @@ model Session {
   day          TrainingDay   @relation(fields: [dayId], references: [id], onDelete: Cascade)
   exercises    Exercise[]
   workoutSkips WorkoutSkip[]
+  workoutSessions WorkoutSession[]
 
   @@map("sessions")
 }
@@ -228,6 +230,7 @@ model WorkoutLog {
   athleteId     String
   completedAt   DateTime @default(now())
   setsCompleted Int
+  durationSeconds Int?
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -237,6 +240,30 @@ model WorkoutLog {
   athlete  User     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@map("workout_logs")
+}
+
+enum WorkoutSessionStatus {
+  Completed
+  Partial
+}
+
+model WorkoutSession {
+  id             String               @id @default(uuid())
+  sessionId      String
+  athleteId      String
+  startedAt      DateTime
+  finishedAt     DateTime
+  elapsedSeconds Int
+  activeSeconds  Int
+  status         WorkoutSessionStatus
+  createdAt      DateTime             @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  athlete User    @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+  @@index([sessionId])
+  @@map("workout_sessions")
 }
 
 enum SkipReason {

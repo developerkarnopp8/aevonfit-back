@@ -28,6 +28,13 @@ export class WorkoutSessionsController {
   }
 
   @Roles('coach')
+  @Get('coach/avg-duration')
+  @ApiOperation({ summary: 'Tempo médio de treino dos alunos do coach (últimos 30 dias)' })
+  coachAvgDuration(@Request() req: any) {
+    return this.service.coachAvgDuration(req.user.id);
+  }
+
+  @Roles('coach')
   @Get('student/:studentId/summary')
   @ApiOperation({ summary: 'Resumo de tempo de execução de um aluno (coach dono)' })
   studentSummary(@Param('studentId') studentId: string, @Request() req: any) {

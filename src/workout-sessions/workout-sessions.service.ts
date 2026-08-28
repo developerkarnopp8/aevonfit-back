@@ -177,4 +177,39 @@ export class WorkoutSessionsService {
       executionCount: executions.length,
     };
   }
+
+  /** Tempo médio de treino dos alunos do coach (últimos 30 dias). */
+  async coachAvgDuration(coachId: string) {
+    const students = await this.prisma.student.findMany({
+      where: { coachId },
+      select: { id: true, userId: true },
+    });
+
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const sessions = await this.prisma.workoutSession.findMany({
+      where: { athleteId: { in: students.map(s => s.userId) }, startedAt: { gte: since } },
+      select: { athleteId: true, elapsedSeconds: true },
+    });
+
+    const all = sessions.map(s => s.elapsedSeconds);
+    const byAthlete = new Map<string, number[]>();
+    for (const s of sessions) {
+      const arr = byAthlete.get(s.athleteId) ?? [];
+      arr.push(s.elapsedSeconds);
+      byAthlete.set(s.athleteId, arr);
+    }
+
+    const byStudent = students.map(s => {
+      const vals = byAthlete.get(s.userId) ?? [];
+      return { studentId: s.id, avgSeconds: this.mean(vals), count: vals.length };
+    });
+
+    return {
+      overallAvgSeconds: this.mean(all),
+      totalSessions: sessions.length,
+      byStudent,
+    };
+  }
 }

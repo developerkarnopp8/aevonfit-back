@@ -302,3 +302,67 @@ describe('WorkoutSessionsService.sessionDetail', () => {
     expect(result.executionCount).toBe(0);
   });
 });
+
+describe('WorkoutSessionsService.coachAvgDuration', () => {
+  let service: WorkoutSessionsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = {
+      student: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'student-1', userId: 'athlete-1' },
+          { id: 'student-2', userId: 'athlete-2' },
+        ]),
+      },
+      workoutSession: {
+        findMany: jest.fn().mockResolvedValue([
+          { athleteId: 'athlete-1', elapsedSeconds: 3000 },
+          { athleteId: 'athlete-1', elapsedSeconds: 3600 },
+          { athleteId: 'athlete-2', elapsedSeconds: 1800 },
+        ]),
+      },
+    };
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkoutSessionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: { findOne: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(WorkoutSessionsService);
+  });
+
+  it('agrega por aluno do coach e no geral, últimos 30 dias', async () => {
+    const result = await service.coachAvgDuration('coach-1');
+
+    expect(prisma.student.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { coachId: 'coach-1' } }),
+    );
+    expect(prisma.workoutSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          athleteId: { in: ['athlete-1', 'athlete-2'] },
+          startedAt: expect.objectContaining({ gte: expect.any(Date) }),
+        }),
+      }),
+    );
+    expect(result.overallAvgSeconds).toBe(2800); // (3000+3600+1800)/3
+    expect(result.totalSessions).toBe(3);
+    expect(result.byStudent).toEqual([
+      { studentId: 'student-1', avgSeconds: 3300, count: 2 },
+      { studentId: 'student-2', avgSeconds: 1800, count: 1 },
+    ]);
+  });
+
+  it('retorna zerado e byStudent com zeros quando não há sessão', async () => {
+    prisma.workoutSession.findMany.mockResolvedValue([]);
+    const result = await service.coachAvgDuration('coach-1');
+    expect(result.overallAvgSeconds).toBe(0);
+    expect(result.totalSessions).toBe(0);
+    expect(result.byStudent).toEqual([
+      { studentId: 'student-1', avgSeconds: 0, count: 0 },
+      { studentId: 'student-2', avgSeconds: 0, count: 0 },
+    ]);
+  });
+});

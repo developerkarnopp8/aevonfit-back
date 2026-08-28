@@ -22,6 +22,7 @@ export class WorkoutLogsService {
         exerciseId: dto.exerciseId,
         athleteId: user.id,
         setsCompleted: dto.setsCompleted,
+        durationSeconds: dto.durationSeconds ?? null,
         notes: dto.notes,
         completedAt: dto.completedAt ? new Date(dto.completedAt) : new Date(),
       },

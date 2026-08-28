@@ -114,4 +114,24 @@ describe('WorkoutLogsService.logExercise', () => {
     await expect(service.logExercise(athleteUser, dto as any)).rejects.toThrow(ForbiddenException);
     expect(prisma.workoutLog.create).not.toHaveBeenCalled();
   });
+
+  it('grava durationSeconds quando informado no dto', async () => {
+    await service.logExercise(athleteUser, { ...dto, durationSeconds: 95 } as any);
+
+    expect(prisma.workoutLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ durationSeconds: 95 }),
+      }),
+    );
+  });
+
+  it('grava durationSeconds como null quando ausente', async () => {
+    await service.logExercise(athleteUser, dto as any);
+
+    expect(prisma.workoutLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ durationSeconds: null }),
+      }),
+    );
+  });
 });

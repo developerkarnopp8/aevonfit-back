@@ -1,6 +1,6 @@
 import {
   Injectable, ForbiddenException, NotFoundException,
-  ServiceUnavailableException, UnprocessableEntityException,
+  ServiceUnavailableException, UnprocessableEntityException, Logger,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -17,6 +17,8 @@ const SISTEMA_INDISPONIVEL_MSG =
 
 @Injectable()
 export class PdfImportService {
+  private readonly logger = new Logger(PdfImportService.name);
+
   constructor(
     private prisma: PrismaService,
     private extraction: AnthropicExtractionService,
@@ -97,8 +99,19 @@ export class PdfImportService {
     try {
       return await this.extraction.extract(pdfBuffer);
     } catch (err) {
+      this.logger.error(
+        'Falha na extração via IA',
+        err instanceof Error ? err.stack : String(err),
+      );
       if (this.isCreditExhaustedError(err)) {
-        await this.notifyAdminsOfCreditExhaustion();
+        try {
+          await this.notifyAdminsOfCreditExhaustion();
+        } catch (notifyErr) {
+          this.logger.error(
+            'Falha ao notificar admins sobre crédito esgotado',
+            notifyErr instanceof Error ? notifyErr.stack : String(notifyErr),
+          );
+        }
       }
       throw new ServiceUnavailableException(SISTEMA_INDISPONIVEL_MSG);
     }

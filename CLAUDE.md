@@ -111,11 +111,12 @@ Variáveis obrigatórias:
 | exercise-library | CRUD de exercícios reutilizáveis do coach (GET/POST/PATCH/DELETE) |
 | payments | GET /payments, GET /payments/summary, GET /payments/student/:studentId, POST /payments, PATCH /payments/:id/pay, PATCH /payments/:id, DELETE /payments/:id |
 | messages | GET /messages/inbox, GET /messages/unread, GET /messages/:otherId, POST /messages — WebSocket namespace `/messages` para real-time |
+| admin | GET /admin/coaches, POST /admin/coaches, POST /admin/coaches/:id/reset-password (gera senha forte, mostrada uma vez), PATCH /admin/coaches/:id (só aiImportEnabled) — tudo atrás de @Roles('admin') |
 
 ## Modelo de Dados
 
 ```
-User (coach|athlete)
+User (coach|athlete|admin)
 └── Student (vinculado a um User atleta + coachId)
     └── TrainingPlan (month ordinal + startDate real, normalizado pra Segunda-feira, publicado?)
         └── Week (semana 1..N — sem data própria, derivada de startDate + weekNumber)
@@ -127,6 +128,8 @@ User (coach|athlete)
 Movement (catálogo global ou customizado por coach — coachId opcional)
 └── PersonalRecord (atleta registra PR/1RM — loadKg e/ou reps, log-por-evento)
 ```
+
+`User.aiImportEnabled`: Boolean, default true — só relevante pra role coach, liga/desliga a importação de PDF via IA daquele coach (controlado pelo painel admin).
 
 ## Decisões Arquiteturais
 
@@ -150,4 +153,4 @@ Movement (catálogo global ou customizado por coach — coachId opcional)
 
 ---
 
-_Última atualização: 2026-08-26 — sincronizado com o código real: módulos `daily-intake`, `movements`, `personal-records`, `exercise-library`, `payments` estavam implementados mas não documentados aqui (`GET /workout-logs/student/:studentId/history` chegou a ser documentado como existente numa sessão anterior sem nunca ter sido mergeado — causou um 404 real quando outra feature presumiu que o endpoint já existia). `TrainingPlan.startDate` adicionado ao modelo de dados._
+_Última atualização: 2026-08-28 — adicionado o papel admin, módulo /admin, e o campo User.aiImportEnabled._

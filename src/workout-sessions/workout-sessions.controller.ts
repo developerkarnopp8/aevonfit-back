@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -18,5 +18,12 @@ export class WorkoutSessionsController {
   @ApiOperation({ summary: 'Checkout: grava a sessão executada (atleta logado)' })
   checkout(@Request() req: any, @Body() dto: CheckoutWorkoutSessionDto) {
     return this.service.checkout(req.user, dto);
+  }
+
+  @Roles('athlete')
+  @Get('me')
+  @ApiOperation({ summary: 'Histórico de sessões executadas do atleta logado' })
+  listMine(@Request() req: any) {
+    return this.service.listMine(req.user.id);
   }
 }

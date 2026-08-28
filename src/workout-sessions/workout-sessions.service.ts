@@ -61,4 +61,24 @@ export class WorkoutSessionsService {
       include: { session: { select: { name: true } } },
     });
   }
+
+  /** Histórico de sessões executadas do atleta logado (mais recentes primeiro). */
+  async listMine(athleteId: string) {
+    const rows = await this.prisma.workoutSession.findMany({
+      where: { athleteId },
+      orderBy: { startedAt: 'desc' },
+      take: 50,
+      include: { session: { select: { name: true, type: true } } },
+    });
+    return rows.map(r => ({
+      id: r.id,
+      sessionId: r.sessionId,
+      sessionName: r.session.name,
+      sessionType: r.session.type,
+      startedAt: r.startedAt,
+      elapsedSeconds: r.elapsedSeconds,
+      activeSeconds: r.activeSeconds,
+      status: r.status,
+    }));
+  }
 }

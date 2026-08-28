@@ -100,3 +100,46 @@ describe('WorkoutSessionsService.checkout', () => {
     await expect(service.checkout(athleteUser, dto)).rejects.toThrow(BadRequestException);
   });
 });
+
+describe('WorkoutSessionsService.listMine', () => {
+  let service: WorkoutSessionsService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = {
+      workoutSession: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'ws-1', sessionId: 's-1', startedAt: new Date('2026-08-28T10:00:00Z'),
+            elapsedSeconds: 2700, activeSeconds: 1800, status: 'Completed',
+            session: { name: 'Segunda A', type: 'Metcon' },
+          },
+        ]),
+      },
+    };
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkoutSessionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StudentsService, useValue: { findOne: jest.fn() } },
+      ],
+    }).compile();
+    service = module.get(WorkoutSessionsService);
+  });
+
+  it('lista as sessões do próprio atleta, mais recentes primeiro', async () => {
+    const result = await service.listMine('athlete-1');
+
+    expect(prisma.workoutSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { athleteId: 'athlete-1' },
+        orderBy: { startedAt: 'desc' },
+        take: 50,
+      }),
+    );
+    expect(result[0]).toEqual({
+      id: 'ws-1', sessionId: 's-1', sessionName: 'Segunda A', sessionType: 'Metcon',
+      startedAt: new Date('2026-08-28T10:00:00Z'), elapsedSeconds: 2700, activeSeconds: 1800, status: 'Completed',
+    });
+  });
+});
